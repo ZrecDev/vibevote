@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@vibevote/contracts": "workspace:*",
+    "@supabase/supabase-js": "^2.110.8",
     "zod": "^4.3.5"
   }
 }

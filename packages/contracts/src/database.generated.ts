@@ -178,6 +178,25 @@ export type Database = {
         Args: { target_session_id: string };
         Returns: undefined;
       };
+      create_decision_session_v1: {
+        Args: {
+          p_category: string;
+          p_host_display_name: string;
+          p_invitation_token_hash: string;
+          p_mode: string;
+          p_options: Json;
+          p_title: string;
+        };
+        Returns: Json;
+      };
+      join_decision_session_v1: {
+        Args: {
+          p_display_name: string;
+          p_guest_access_token_hash: string;
+          p_invitation_token_hash: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;
