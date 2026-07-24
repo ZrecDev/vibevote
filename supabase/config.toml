@@ -1,0 +1,10 @@
+project_id = "vibevote-local"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+
+# Foundation only: add tables, RLS policies, and functions in reviewed migrations.

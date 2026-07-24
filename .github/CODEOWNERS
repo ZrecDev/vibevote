@@ -1,0 +1,14 @@
+# Replace @vibevote-experience and @vibevote-platform with actual GitHub teams/users.
+/apps/web/app/ @vibevote-experience
+/apps/web/components/ @vibevote-experience
+/apps/web/features/ @vibevote-experience
+/apps/web/styles/ @vibevote-experience
+/packages/ui/ @vibevote-experience
+/packages/contracts/ @vibevote-platform @vibevote-experience
+/packages/decision-engine/ @vibevote-platform
+/packages/server/ @vibevote-platform
+/packages/config/ @vibevote-platform
+/supabase/ @vibevote-platform
+/.github/workflows/ @vibevote-platform
+/package.json @vibevote-platform
+/pnpm-lock.yaml @vibevote-platform
