@@ -68,6 +68,7 @@ export const createSessionRequestSchema = z
     category: decisionCategorySchema,
     mode: decisionModeSchema,
     options: z.array(createDecisionOptionSchema).min(2).max(12),
+    hostDisplayName: z.string().trim().min(1).max(60),
   })
   .strict();
 

@@ -19,8 +19,42 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options,
+        hostDisplayName: '  Alex  ',
       }).success,
     ).toBe(true);
+  });
+
+  it('requires a trimmed host display name and keeps the schema strict', () => {
+    expect(
+      createSessionRequestSchema.parse({
+        title: 'Dinner',
+        category: 'EAT',
+        mode: 'BEST_FIT',
+        options,
+        hostDisplayName: '  Alex  ',
+      }).hostDisplayName,
+    ).toBe('Alex');
+    for (const hostDisplayName of ['', '   ', 'x'.repeat(61)]) {
+      expect(
+        createSessionRequestSchema.safeParse({
+          title: 'Dinner',
+          category: 'EAT',
+          mode: 'BEST_FIT',
+          options,
+          hostDisplayName,
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      createSessionRequestSchema.safeParse({
+        title: 'Dinner',
+        category: 'EAT',
+        mode: 'BEST_FIT',
+        options,
+        hostDisplayName: 'Alex',
+        extra: true,
+      }).success,
+    ).toBe(false);
   });
 
   it('accepts the minimum and maximum option counts', () => {
@@ -30,6 +64,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options,
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(true);
     expect(
@@ -38,6 +73,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options: Array.from({ length: 12 }, (_, index) => ({ label: `Option ${index + 1}` })),
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(true);
   });
@@ -49,6 +85,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options: options.slice(0, 1),
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(false);
     expect(
@@ -57,6 +94,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options: Array.from({ length: 13 }, (_, index) => ({ label: `Option ${index + 1}` })),
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(false);
   });
@@ -68,6 +106,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'RANDOM',
         options,
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(false);
     expect(sessionStatusSchema.safeParse('OPEN').success).toBe(false);

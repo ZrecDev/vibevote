@@ -1,6 +1,6 @@
 import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
-  transpilePackages: ['@vibevote/contracts', '@vibevote/ui'],
+  transpilePackages: ['@vibevote/contracts', '@vibevote/server', '@vibevote/ui'],
   allowedDevOrigins: ['127.0.0.1'],
 };
 export default nextConfig;
