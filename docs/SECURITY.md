@@ -12,3 +12,7 @@ Every future user-facing table requires RLS and a negative authorization test in
 - Individual ballots and private preferences remain server-only until a later explicitly approved participant-private contract is required. Realtime may announce aggregate progress only.
 - API errors use a closed machine-readable code enum and safe client copy. They must not expose stack traces, SQL/provider errors, internal exception messages, authorization details, invitation secrets, or credentials.
 - Server-only contract fields include invitation-token hashes and decision-engine random seeds. Server endpoints remain responsible for transition validation, authorization, and result finalization.
+
+## Persistence foundation RLS
+
+All persistence tables enable RLS and grant no direct privileges to `anon` or `authenticated`; no policies are created in this batch. Raw invitation and guest tokens are generated and consumed only by future server operations, while only non-empty hashes are persisted. Invitation hashes, guest credential hashes, and all future internal fields must never be projected to clients. Future create/join operations must use server-owned authorization and safe response projections, with actual negative anonymous and authenticated authorization tests run against local Supabase before enabling access.

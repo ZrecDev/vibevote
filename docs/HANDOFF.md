@@ -15,14 +15,16 @@ Blocked by:
 
 ## Platform Lead
 
-Branch: `contract/session-v1`
-Current task: Contract-only v1 schemas for creating, joining, and safely displaying decision rooms.
-Completed: Strict Zod contracts and inferred types for session vocabulary, requests/responses, room visibility tiers, invitation responses, transition vocabulary, and stable API errors. Added typed mock fixtures and focused contract coverage.
-Still needed: Shared approval of provisional readiness vocabulary, transition matrix, invitation-expiry policy, descriptions, and hard-constraint shape; then server persistence, authorization, and decision behavior in later batches.
-Files touched: `packages/contracts/src/index.ts`, `packages/contracts/src/fixtures.ts`, `packages/contracts/src/index.test.ts`, `docs/DATA_MODEL.md`, `docs/SECURITY.md`, `docs/HANDOFF.md`.
-Tests run: Focused Vitest contract suite (8 passed), `tsc --noEmit -p packages/contracts/tsconfig.json`, Prettier check for changed files, and `git diff --check` passed. No package lint script or package ESLint configuration exists, so no contract-scoped lint command applies.
-Known issues: No server enforcement, database schema, authentication, vote storage, or realtime behavior is implemented by this contract-only batch.
-Blocked by: None.
+Branch: `platform/session-persistence-v1`
+Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-platform-persistence`
+Current task: Secure additive session-persistence and deny-by-default RLS foundation.
+Completed: Supabase CLI 2.109.1; isolated VibeVote ports 55320-55329; normalized sessions, options, participants, and invitations migration with contract-aligned checks, token-hash-only storage, cascading dependencies, one-host constraint, option-order uniqueness, and deny-by-default RLS.
+Still needed: Local Supabase reset, generated database types, live negative RLS tests, and future server-owned create/join operations.
+Files touched: `supabase/migrations/20260724172000_create_session_persistence_foundation.sql`, `supabase/tests/20260724_session_persistence_foundation.sql`, `docs/DATA_MODEL.md`, `docs/SECURITY.md`, `docs/HANDOFF.md`.
+Tests run: Pending final checks; Supabase CLI is unavailable and Docker Desktop is not running.
+Tests run: Clean `supabase db reset` and SQL fixture passed; anon and authenticated were each denied SELECT/INSERT/UPDATE/DELETE on sessions, options, participants, and invitations; CLI-generated `packages/contracts/src/database.generated.ts` was safely UTF-8 recovered through Node spawnSync with validation and atomic replacement; targeted Prettier passed; lint passed; typecheck passed; unit tests 10/10; build passed; E2E 1/1; `git diff --check` passed.
+Known issues: Windows repository-wide Prettier reports unrelated CRLF baseline noise. SQL/TOML have no configured Prettier parser; migration reset, SQL probes, configuration startup, and diff checks validate them. No APIs, frontend integration, ballots, transitions, or realtime are implemented.
+Blocked by: None for this persistence batch. Remaining work is server-owned create/join authorization, atomic 2-12 option validation, token verification, rate limits, and transition enforcement.
 
 ## Shared contracts changed
 
