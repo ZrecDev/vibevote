@@ -1,4 +1,3 @@
-import { PlaceholderPage } from '../../placeholder-page';
-export default function Page() {
-  return <PlaceholderPage title="Room lobby" />;
-}
+import { AppShell } from '@/components/app-shell';
+import { LobbyScreen } from '@/features/room/room-screens';
+export default function Page() { return <AppShell><LobbyScreen /></AppShell>; }

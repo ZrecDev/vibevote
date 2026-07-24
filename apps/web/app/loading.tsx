@@ -1,10 +1,3 @@
 import { AppShell } from '@/components/app-shell';
-export default function Loading() {
-  return (
-    <AppShell>
-      <p role="status" aria-live="polite">
-        Loading VibeVote…
-      </p>
-    </AppShell>
-  );
-}
+import { RoomState } from '@/features/room/room-screens';
+export default function Loading() { return <AppShell><RoomState kind="loading" /></AppShell>; }
