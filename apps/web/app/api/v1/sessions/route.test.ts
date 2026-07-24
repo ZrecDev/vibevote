@@ -42,7 +42,7 @@ describe('POST /api/v1/sessions', () => {
         expiresAt: null,
       },
     };
-    createSession.mockResolvedValue(data);
+    createSession.mockResolvedValue({ response: data, participantAccessToken: 'host-token' });
     const response = await postSession(request(JSON.stringify(input)), {
       rateLimit: async () => 'allowed',
     });
@@ -53,20 +53,26 @@ describe('POST /api/v1/sessions', () => {
       { invitationBaseUrl: 'https://app.example.test/join' },
     );
     expect(response.headers.get('access-control-allow-origin')).toBeNull();
-    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('set-cookie')).toContain('vibevote_participant_v1=host-token');
+    expect(response.headers.get('set-cookie')).toContain(
+      `Path=/api/v1/sessions/${data.invitation.sessionId}`,
+    );
   });
 
   it('accepts a JSON charset', async () => {
     createSession.mockResolvedValue({
-      session: {
-        ...fixtures.lobbyRoom,
-        currentParticipantId: fixtures.lobbyRoom.participants[0]!.id,
-        hostControls: { canStartVoting: true, canCancelSession: true },
-      },
-      invitation: {
-        sessionId: fixtures.lobbyRoom.session.id,
-        inviteUrl: 'https://app.example.test/join?invite=secret',
-        expiresAt: null,
+      participantAccessToken: 'host-token',
+      response: {
+        session: {
+          ...fixtures.lobbyRoom,
+          currentParticipantId: fixtures.lobbyRoom.participants[0]!.id,
+          hostControls: { canStartVoting: true, canCancelSession: true },
+        },
+        invitation: {
+          sessionId: fixtures.lobbyRoom.session.id,
+          inviteUrl: 'https://app.example.test/join?invite=secret',
+          expiresAt: null,
+        },
       },
     });
     expect(

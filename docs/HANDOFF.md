@@ -15,14 +15,14 @@ Blocked by:
 
 ## Platform Lead
 
-Branch: `platform/session-http-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-platform-session-http`
-Current task: Secure HTTP adapters for server-owned session create and join operations.
-Completed: `POST /api/v1/sessions` and `POST /api/v1/sessions/join`, strict JSON and 16 KiB parsing, trusted `VIBEVOTE_APP_ORIGIN`, same-origin CSRF policy without broad CORS, trusted invitation URLs, fail-closed production/preview rate-limit boundary, and the scoped HttpOnly guest cookie. Create requires `hostDisplayName`; the raw guest credential is never serialized.
-Files touched: web server-only adapter/helpers and focused tests, approved contract/server configuration changes, lockfile, and Platform documentation.
-Tests run: Focused adapter/helper/security tests and the complete repository/database/publication verification gate are required before publication; record final results with the PR.
+Branch: `platform/session-bootstrap-v1`
+Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-platform-session-bootstrap`
+Current task: Unified host/guest participant credentials and cookie-authenticated session bootstrap.
+Completed: Migration `20260724231422_add_participant_session_credentials_v1.sql`; reviewed RPCs `create_decision_session_v1`, `join_decision_session_v1`, and `get_participant_session_v1`; server operations `createSession`, `joinSession`, and `bootstrapSession`; `GET /api/v1/sessions/{sessionId}`; strict host/guest bootstrap contract; and scoped `vibevote_participant_v1` cookies at `/api/v1/sessions/{sessionId}`. New host and guest hashes are stored without exposing raw credentials.
+Files touched: approved Platform migration, contracts, server operations, server-only web routes/helpers, focused tests, and Platform documentation only.
+Tests run: focused contracts/server/token/cookie/route tests: 56 passed across 9 files; clean local Supabase reset and all 3 SQL fixtures passed; generated database types validated and `pnpm typecheck` passed; live create/join/host-bootstrap/guest-bootstrap/cross-session rejection integration passed; `pnpm lint` passed; `pnpm test` passed (71 tests, 1 environment-gated integration skip); production build passed; E2E passed (1); targeted Prettier and `git diff --check` passed; client, secret, and build credential scans passed. Publication remains pending.
 Known issues: A durable serverless-compatible rate-limit provider remains required before public production traffic; the current production/preview boundary intentionally fails closed.
-Still needed: Frontend integration, session bootstrap using the cookie, realtime, ballots, voting, and results.
+Still needed: Experience create UI must send `hostDisplayName`; create/join establish the HttpOnly cookie; client JavaScript must not read/store credentials; room reload must call bootstrap and render host or guest state. Begin that UI integration only after this Platform batch merges. A durable serverless-compatible production rate limiter is also still required.
 Blocked by: None.
 
 ## Shared contracts changed

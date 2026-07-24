@@ -131,9 +131,9 @@ export type Database = {
       session_participants: {
         Row: {
           display_name: string;
-          guest_access_token_hash: string | null;
           id: string;
           joined_at: string;
+          participant_access_token_hash: string | null;
           readiness: string;
           role: string;
           session_id: string;
@@ -141,9 +141,9 @@ export type Database = {
         };
         Insert: {
           display_name: string;
-          guest_access_token_hash?: string | null;
           id?: string;
           joined_at?: string;
+          participant_access_token_hash?: string | null;
           readiness: string;
           role: string;
           session_id: string;
@@ -151,9 +151,9 @@ export type Database = {
         };
         Update: {
           display_name?: string;
-          guest_access_token_hash?: string | null;
           id?: string;
           joined_at?: string;
+          participant_access_token_hash?: string | null;
           readiness?: string;
           role?: string;
           session_id?: string;
@@ -182,6 +182,7 @@ export type Database = {
         Args: {
           p_category: string;
           p_host_display_name: string;
+          p_host_participant_access_token_hash: string;
           p_invitation_token_hash: string;
           p_mode: string;
           p_options: Json;
@@ -189,12 +190,20 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_participant_session_v1: {
+        Args: { p_participant_access_token_hash: string; p_session_id: string };
+        Returns: Json;
+      };
       join_decision_session_v1: {
         Args: {
           p_display_name: string;
-          p_guest_access_token_hash: string;
           p_invitation_token_hash: string;
+          p_participant_access_token_hash: string;
         };
+        Returns: Json;
+      };
+      participant_room_v1: {
+        Args: { p_participant_id: string; p_session_id: string };
         Returns: Json;
       };
     };
