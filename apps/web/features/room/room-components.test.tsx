@@ -5,7 +5,7 @@ import { PrivateBallot, VotingProgress, ParticipantList } from './room-component
 import { ResultScreen, RoomState } from './room-screens';
 
 describe('mock room experience', () => {
-  it('renders participant ready and waiting states', () => {
+  it('renders contract-backed participant role and readiness states', () => {
     render(<ParticipantList />);
     expect(screen.getAllByText('Ready')).toHaveLength(2);
     expect(screen.getByText('Waiting')).toBeInTheDocument();

@@ -11,11 +11,12 @@ export const mockRoom: PublicRoomState = {
     ],
   },
   participants: [
-    { id: '550e8400-e29b-41d4-a716-446655440010', displayName: 'Maya', isHost: true, ready: true },
-    { id: '550e8400-e29b-41d4-a716-446655440011', displayName: 'Jordan', isHost: false, ready: true },
-    { id: '550e8400-e29b-41d4-a716-446655440012', displayName: 'You', isHost: false, ready: false },
+    { id: '550e8400-e29b-41d4-a716-446655440010', displayName: 'Maya', role: 'HOST', readiness: 'READY' },
+    { id: '550e8400-e29b-41d4-a716-446655440011', displayName: 'Jordan', role: 'GUEST', readiness: 'READY' },
+    { id: '550e8400-e29b-41d4-a716-446655440012', displayName: 'You', role: 'GUEST', readiness: 'WAITING' },
   ],
   finishedParticipantCount: 2,
+  result: null,
 };
 
 export const mockResult: ResultSummary = {

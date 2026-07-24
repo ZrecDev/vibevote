@@ -6,7 +6,7 @@ import { Button, Card } from '@/components/ui';
 import { mockInvite, mockRoom } from './mock-room';
 
 export function ParticipantList({ participants = mockRoom.participants }: { participants?: Participant[] }) {
-  return <div aria-label="Participants">{participants.map((participant) => <div className="participant" key={participant.id}><div className="row"><div className="avatar" aria-hidden="true">{participant.displayName[0]}</div><div><strong>{participant.displayName} {participant.isHost && <span className="muted">(host)</span>}</strong><div className="muted" style={{ fontSize: '.8rem' }}>{participant.isHost ? 'Started this decision' : 'In the room'}</div></div></div><span className={participant.ready ? 'ready' : 'waiting'}>{participant.ready ? 'Ready' : 'Waiting'}</span></div>)}</div>;
+  return <div aria-label="Participants">{participants.map((participant) => { const isHost = participant.role === 'HOST'; const isReady = participant.readiness === 'READY'; return <div className="participant" key={participant.id}><div className="row"><div className="avatar" aria-hidden="true">{participant.displayName[0]}</div><div><strong>{participant.displayName} {isHost && <span className="muted">(host)</span>}</strong><div className="muted" style={{ fontSize: '.8rem' }}>{isHost ? 'Started this decision' : 'In the room'}</div></div></div><span className={isReady ? 'ready' : 'waiting'}>{isReady ? 'Ready' : 'Waiting'}</span></div>; })}</div>;
 }
 
 export function InviteCard() {

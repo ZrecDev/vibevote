@@ -28,22 +28,24 @@ Requested contract changes: None.
 
 ## Platform Lead
 
-Branch:
-Current task:
-Completed:
-Still needed:
-Files touched:
-Tests run:
-Known issues:
-Blocked by:
+Branch: `contract/session-v1`
+Current task: Contract-only v1 schemas for creating, joining, and safely displaying decision rooms.
+Completed: Strict Zod contracts and inferred types for session vocabulary, requests/responses, room visibility tiers, invitation responses, transition vocabulary, and stable API errors. Added typed mock fixtures and focused contract coverage.
+Still needed: Shared approval of provisional readiness vocabulary, transition matrix, invitation-expiry policy, descriptions, and hard-constraint shape; then server persistence, authorization, and decision behavior in later batches.
+Files touched: `packages/contracts/src/index.ts`, `packages/contracts/src/fixtures.ts`, `packages/contracts/src/index.test.ts`, `docs/DATA_MODEL.md`, `docs/SECURITY.md`, `docs/HANDOFF.md`.
+Tests run: Focused Vitest contract suite (8 passed), `tsc --noEmit -p packages/contracts/tsconfig.json`, Prettier check for changed files, and `git diff --check` passed. No package lint script or package ESLint configuration exists, so no contract-scoped lint command applies.
+Known issues: No server enforcement, database schema, authentication, vote storage, or realtime behavior is implemented by this contract-only batch.
+Blocked by: None.
 
 ## Shared contracts changed
 
-None. Experience uses the current `PublicRoomState`, `ResultSummary`, and vote vocabulary unchanged.
+Session-v1 contracts merged from `contract/session-v1`: room visibility tiers, create/join/invitation request and response schemas, transition vocabulary, stable API errors, and typed fixtures. Experience must align its mock adapter before integration work.
 
 ## Merge order
 
-Experience room shell can be reviewed independently. Integrate an adapter after platform contracts/services for session reads, ballot writes, invitations, aggregate progress, and results are available.
+1. Merge this small shared-contract batch before platform services or Experience adapter integration.
+2. Experience room shell consumes the typed public fixtures through one mock adapter, then integrates session reads, ballot writes, invitations, aggregate progress, and results when platform services are available.
+3. Platform Lead follows with schema/RLS and server routes only after shared product decisions are resolved.
 
 ## Integration status
 
@@ -51,4 +53,4 @@ Mock-only frontend; no backend, persistence, API, authentication, realtime, or d
 
 ## Next milestone
 
-Platform session/invitation and private ballot workflow, followed by an Experience adapter integration pass and two-browser validation.
+Approve unresolved v1 policy choices, then add platform session/invitation and private ballot workflow with additive local Supabase schema and RLS. After that, the Experience Lead aligns the mock adapter to the finalized contracts and runs two-browser validation.
