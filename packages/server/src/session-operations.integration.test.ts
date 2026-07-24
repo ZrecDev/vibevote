@@ -18,8 +18,9 @@ describe.runIf(runLive)('live session operations', () => {
         category: 'EAT',
         mode: 'BEST_FIT',
         options: [{ label: 'A' }, { label: 'B' }],
+        hostDisplayName: 'Host',
       },
-      { hostDisplayName: 'Host', invitationBaseUrl: 'https://vibevote.test/join', client },
+      { invitationBaseUrl: 'https://vibevote.test/join', client },
     );
     const invitationToken = new URL(created.invitation.inviteUrl).searchParams.get('invite');
     expect(invitationToken).toMatch(/^[A-Za-z0-9_-]{43}$/);

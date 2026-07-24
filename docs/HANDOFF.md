@@ -15,14 +15,14 @@ Blocked by:
 
 ## Platform Lead
 
-Branch: `platform/session-operations-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-platform-session-operations`
-Current task: Secure server-owned session create and join operations.
-Completed: `20260724190000_add_session_operations_v1.sql` adds `create_decision_session_v1` and `join_decision_session_v1`; service-role-only privileged RPCs, secure token utilities, safe error/projection modules, create/join operations, and an internal-only guest-token result. `@supabase/supabase-js` was added only to `@vibevote/server`; CLI-generated database types include both RPCs.
-Files touched: server operation modules/tests, `packages/contracts/src/database.generated.ts`, `packages/server/package.json`, `pnpm-lock.yaml`, the operations migration/SQL fixture, and Platform documentation.
-Tests run: Clean reset passed; SQL transaction, rollback, invalid/revoked/expired invitation, privilege, RLS, and safe-result fixture passed; TypeScript create/join integration passed; focused unit tests and server typecheck passed.
-Known issues: Windows repository-wide Prettier may report unrelated CRLF baseline noise. Verify changed supported files directly; Linux CI is authoritative for repository-wide formatting. SQL/TOML have no configured Prettier parser.
-Still needed: Final repository gate, publication, HTTP adapter, HttpOnly guest cookie, rate limiting/abuse protection, frontend integration, realtime, ballots, voting, and results.
+Branch: `platform/session-http-v1`
+Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-platform-session-http`
+Current task: Secure HTTP adapters for server-owned session create and join operations.
+Completed: `POST /api/v1/sessions` and `POST /api/v1/sessions/join`, strict JSON and 16 KiB parsing, trusted `VIBEVOTE_APP_ORIGIN`, same-origin CSRF policy without broad CORS, trusted invitation URLs, fail-closed production/preview rate-limit boundary, and the scoped HttpOnly guest cookie. Create requires `hostDisplayName`; the raw guest credential is never serialized.
+Files touched: web server-only adapter/helpers and focused tests, approved contract/server configuration changes, lockfile, and Platform documentation.
+Tests run: Focused adapter/helper/security tests and the complete repository/database/publication verification gate are required before publication; record final results with the PR.
+Known issues: A durable serverless-compatible rate-limit provider remains required before public production traffic; the current production/preview boundary intentionally fails closed.
+Still needed: Frontend integration, session bootstrap using the cookie, realtime, ballots, voting, and results.
 Blocked by: None.
 
 ## Shared contracts changed

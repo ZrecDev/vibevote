@@ -12,18 +12,13 @@ import { generateToken, hashToken } from './tokens';
 type CreateRpcResult = { session_id?: string; participant_id?: string; room?: unknown };
 
 export type CreateSessionOperationOptions = {
-  hostDisplayName: string;
   invitationBaseUrl: string | URL;
   client?: ServerSupabaseClient;
 };
 
 export async function createSession(
   request: unknown,
-  {
-    hostDisplayName,
-    invitationBaseUrl,
-    client = createServiceRoleClient(),
-  }: CreateSessionOperationOptions,
+  { invitationBaseUrl, client = createServiceRoleClient() }: CreateSessionOperationOptions,
 ): Promise<CreateSessionResponse> {
   try {
     const input = createSessionRequestSchema.parse(request);
@@ -37,7 +32,7 @@ export async function createSession(
       p_category: input.category,
       p_mode: input.mode,
       p_options: input.options,
-      p_host_display_name: hostDisplayName,
+      p_host_display_name: input.hostDisplayName,
       p_invitation_token_hash: invitationTokenHash,
     });
     if (error) throw error;
