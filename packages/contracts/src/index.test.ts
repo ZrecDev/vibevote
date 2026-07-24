@@ -1,59 +1,113 @@
 import { describe, expect, it } from 'vitest';
-import { decisionCategorySchema, publicRoomStateSchema } from '.';
-const id = '550e8400-e29b-41d4-a716-446655440000';
-describe('provisional contracts', () => {
-  it('parses a valid public room state', () => {
+import {
+  apiErrorSchema,
+  apiErrorCodeSchema,
+  createSessionRequestSchema,
+  fixtures,
+  joinSessionRequestSchema,
+  publicRoomStateSchema,
+  sessionStatusSchema,
+} from '.';
+
+const options = [{ label: 'North Star Cafe' }, { label: 'Green Bowl' }];
+
+describe('v1 session contracts', () => {
+  it('parses a valid create-session request', () => {
     expect(
-      publicRoomStateSchema.safeParse({
-        session: {
-          id,
-          category: 'EAT',
-          mode: 'BEST_FIT',
-          status: 'LOBBY',
-          title: 'Dinner',
-          options: [
-            { id, label: 'Cafe', order: 0, eligible: true },
-            {
-              id: '550e8400-e29b-41d4-a716-446655440001',
-              label: 'Bistro',
-              order: 1,
-              eligible: true,
-            },
-          ],
-        },
-        participants: [{ id, displayName: 'Sam', isHost: true, ready: false }],
-        finishedParticipantCount: 0,
+      createSessionRequestSchema.safeParse({
+        title: 'Friday dinner',
+        category: 'CUSTOM',
+        mode: 'BEST_FIT',
+        options,
       }).success,
     ).toBe(true);
   });
-  it('rejects invalid enums and missing required fields', () => {
-    expect(decisionCategorySchema.safeParse('SPORTS').success).toBe(false);
-    expect(publicRoomStateSchema.safeParse({}).success).toBe(false);
-  });
-  it('does not permit private vote fields', () => {
+
+  it('accepts the minimum and maximum option counts', () => {
     expect(
-      publicRoomStateSchema.safeParse({
-        session: {
-          id,
-          category: 'EAT',
-          mode: 'BEST_FIT',
-          status: 'LOBBY',
-          title: 'Dinner',
-          options: [
-            { id, label: 'Cafe', order: 0, eligible: true },
-            {
-              id: '550e8400-e29b-41d4-a716-446655440001',
-              label: 'Bistro',
-              order: 1,
-              eligible: true,
-            },
-          ],
-        },
-        participants: [],
-        finishedParticipantCount: 0,
-        votes: [{ value: 'LOVE' }],
+      createSessionRequestSchema.safeParse({
+        title: 'Two',
+        category: 'CUSTOM',
+        mode: 'BEST_FIT',
+        options,
       }).success,
     ).toBe(true);
-    expect(Object.keys(publicRoomStateSchema.shape)).not.toContain('votes');
+    expect(
+      createSessionRequestSchema.safeParse({
+        title: 'Twelve',
+        category: 'CUSTOM',
+        mode: 'BEST_FIT',
+        options: Array.from({ length: 12 }, (_, index) => ({ label: `Option ${index + 1}` })),
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects fewer than two or more than twelve options', () => {
+    expect(
+      createSessionRequestSchema.safeParse({
+        title: 'One',
+        category: 'CUSTOM',
+        mode: 'BEST_FIT',
+        options: options.slice(0, 1),
+      }).success,
+    ).toBe(false);
+    expect(
+      createSessionRequestSchema.safeParse({
+        title: 'Thirteen',
+        category: 'CUSTOM',
+        mode: 'BEST_FIT',
+        options: Array.from({ length: 13 }, (_, index) => ({ label: `Option ${index + 1}` })),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects invalid decision modes and session statuses', () => {
+    expect(
+      createSessionRequestSchema.safeParse({
+        title: 'Mode',
+        category: 'CUSTOM',
+        mode: 'RANDOM',
+        options,
+      }).success,
+    ).toBe(false);
+    expect(sessionStatusSchema.safeParse('OPEN').success).toBe(false);
+  });
+
+  it('parses a valid guest join request and rejects invalid display names', () => {
+    expect(
+      joinSessionRequestSchema.safeParse({ inviteToken: 'invite-token', displayName: 'Sam' })
+        .success,
+    ).toBe(true);
+    expect(
+      joinSessionRequestSchema.safeParse({ inviteToken: 'invite-token', displayName: '   ' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('parses valid public state and rejects private fields', () => {
+    expect(publicRoomStateSchema.safeParse(fixtures.lobbyRoom).success).toBe(true);
+    expect(
+      publicRoomStateSchema.safeParse({ ...fixtures.lobbyRoom, votes: [{ value: 'LOVE' }] })
+        .success,
+    ).toBe(false);
+    expect(
+      publicRoomStateSchema.safeParse({ ...fixtures.lobbyRoom, invitationTokenHash: 'hash' })
+        .success,
+    ).toBe(false);
+    expect(
+      publicRoomStateSchema.safeParse({ ...fixtures.lobbyRoom, randomSeed: 'seed' }).success,
+    ).toBe(false);
+  });
+
+  it('uses only stable API error codes', () => {
+    expect(apiErrorCodeSchema.safeParse('INVALID_INVITE').success).toBe(true);
+    expect(apiErrorCodeSchema.safeParse('DATABASE_TIMEOUT').success).toBe(false);
+  });
+
+  it('keeps all fixtures schema-conformant', () => {
+    expect(publicRoomStateSchema.safeParse(fixtures.lobbyRoom).success).toBe(true);
+    expect(publicRoomStateSchema.safeParse(fixtures.votingRoom).success).toBe(true);
+    expect(publicRoomStateSchema.safeParse(fixtures.decidedRoom).success).toBe(true);
+    expect(apiErrorSchema.safeParse(fixtures.safeApiError).success).toBe(true);
   });
 });
