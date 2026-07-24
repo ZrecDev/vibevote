@@ -29,6 +29,7 @@
     "eslint-config-next": "^16.2.11",
     "jsdom": "^27.1.0",
     "prettier": "^3.8.1",
+    "supabase": "2.109.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   }
