@@ -8,15 +8,15 @@ Foundation — first polished mock-only mobile room experience.
 
 Branch: `experience/room-shell`
 
-Current task: First room UX batch.
+Current task: Polished mock room visual rebuild.
 
-Completed: Implemented a componentized, mobile-first mock flow for creating a decision, lobby/invites, participant readiness, private ballots, aggregate-only progress, decision result, backup option, and share/next-action placeholders. Added loading, empty, disconnected/reconnecting, and error-state components. Added light/dark themes, reduced-motion handling, visible controls, responsive styling, and focused component coverage.
+Completed: Rebuilt the mock room experience into a cohesive mobile-first visual system: warm light/dark themes, refreshed home/create flow, a stronger room lobby and invite/QR presentation, role/readiness participant cards, private ballot controls, aggregate-only progress, winner/backup reveal, and polished state surfaces. The session-v1 `role` and `readiness` model remains intact; no backend or decision logic was added.
 
 Still needed: Hook the screens to platform-owned session, invitation, ballot, realtime, and finalization behavior once those contracts and services are available. Validate with user testing and approved visual direction.
 
-Files touched: `apps/web/app/globals.css`, `apps/web/app/page.tsx`, `apps/web/app/create/page.tsx`, `apps/web/app/loading.tsx`, `apps/web/app/error.tsx`, `apps/web/app/room/[sessionId]/page.tsx`, `apps/web/app/room/[sessionId]/vote/page.tsx`, `apps/web/app/room/[sessionId]/result/page.tsx`, `apps/web/components/app-shell.tsx`, `apps/web/components/ui.tsx`, `apps/web/features/room/mock-room.ts`, `apps/web/features/room/room-components.tsx`, `apps/web/features/room/room-screens.tsx`, `apps/web/features/room/room-components.test.tsx`, `docs/HANDOFF.md`.
+Files touched: `apps/web/app/globals.css`, `apps/web/app/page.tsx`, `apps/web/app/create/page.tsx`, `apps/web/components/app-shell.tsx`, `apps/web/features/room/room-components.tsx`, `apps/web/features/room/room-screens.tsx`, `apps/web/features/room/room-components.test.tsx`, `docs/HANDOFF.md`.
 
-Tests run: `pnpm --filter @vibevote/web lint` (passed); `pnpm --filter @vibevote/web typecheck` (passed); `pnpm exec vitest run apps/web/app/page.test.tsx apps/web/components/ui.test.tsx apps/web/features/room/room-components.test.tsx` (passed: 3 files, 9 tests); `pnpm --filter @vibevote/web build` (passed).
+Tests run: `pnpm --filter @vibevote/web lint` (passed); `pnpm --filter @vibevote/web typecheck` (passed); `pnpm exec vitest run apps/web/app/page.test.tsx apps/web/components/ui.test.tsx apps/web/features/room/room-components.test.tsx` (passed: 3 files, 9 tests); `pnpm --filter @vibevote/web build` (passed); `git diff --check` (passed); Chromium smoke at 390×844 (passed: lobby/invite, private ballot, keyboard Veto, aggregate-only progress, winner/backup, and no horizontal overflow).
 
 Known issues: Invitation copy, room creation, voting, share plan, directions, readiness, and reconnection UI are intentionally local presentation only; QR is a styled placeholder, not an encoded link. The mock `finishedParticipantCount` is fixed and no polling/realtime happens.
 
