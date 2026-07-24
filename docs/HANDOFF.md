@@ -15,16 +15,15 @@ Blocked by:
 
 ## Platform Lead
 
-Branch: `platform/session-persistence-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-platform-persistence`
-Current task: Secure additive session-persistence and deny-by-default RLS foundation.
-Completed: Supabase CLI 2.109.1; isolated VibeVote ports 55320-55329; normalized sessions, options, participants, and invitations migration with contract-aligned checks, token-hash-only storage, cascading dependencies, one-host constraint, option-order uniqueness, and deny-by-default RLS.
-Still needed: Local Supabase reset, generated database types, live negative RLS tests, and future server-owned create/join operations.
-Files touched: `supabase/migrations/20260724172000_create_session_persistence_foundation.sql`, `supabase/tests/20260724_session_persistence_foundation.sql`, `docs/DATA_MODEL.md`, `docs/SECURITY.md`, `docs/HANDOFF.md`.
-Tests run: Pending final checks; Supabase CLI is unavailable and Docker Desktop is not running.
-Tests run: Clean `supabase db reset` and SQL fixture passed; anon and authenticated were each denied SELECT/INSERT/UPDATE/DELETE on sessions, options, participants, and invitations; CLI-generated `packages/contracts/src/database.generated.ts` was safely UTF-8 recovered through Node spawnSync with validation and atomic replacement; targeted Prettier passed; lint passed; typecheck passed; unit tests 10/10; build passed; E2E 1/1; `git diff --check` passed.
-Known issues: Windows repository-wide Prettier reports unrelated CRLF baseline noise. SQL/TOML have no configured Prettier parser; migration reset, SQL probes, configuration startup, and diff checks validate them. No APIs, frontend integration, ballots, transitions, or realtime are implemented.
-Blocked by: None for this persistence batch. Remaining work is server-owned create/join authorization, atomic 2-12 option validation, token verification, rate limits, and transition enforcement.
+Branch: `platform/session-operations-v1`
+Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-platform-session-operations`
+Current task: Secure server-owned session create and join operations.
+Completed: `20260724190000_add_session_operations_v1.sql` adds `create_decision_session_v1` and `join_decision_session_v1`; service-role-only privileged RPCs, secure token utilities, safe error/projection modules, create/join operations, and an internal-only guest-token result. `@supabase/supabase-js` was added only to `@vibevote/server`; CLI-generated database types include both RPCs.
+Files touched: server operation modules/tests, `packages/contracts/src/database.generated.ts`, `packages/server/package.json`, `pnpm-lock.yaml`, the operations migration/SQL fixture, and Platform documentation.
+Tests run: Clean reset passed; SQL transaction, rollback, invalid/revoked/expired invitation, privilege, RLS, and safe-result fixture passed; TypeScript create/join integration passed; focused unit tests and server typecheck passed.
+Known issues: Windows repository-wide Prettier may report unrelated CRLF baseline noise. Verify changed supported files directly; Linux CI is authoritative for repository-wide formatting. SQL/TOML have no configured Prettier parser.
+Still needed: Final repository gate, publication, HTTP adapter, HttpOnly guest cookie, rate limiting/abuse protection, frontend integration, realtime, ballots, voting, and results.
+Blocked by: None.
 
 ## Shared contracts changed
 

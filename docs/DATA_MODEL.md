@@ -31,3 +31,9 @@ Participants have an ID, temporary display name, role (`HOST` or `GUEST`), and r
 ## Session persistence foundation
 
 Migration `20260724172000_create_session_persistence_foundation.sql` adds `decision_sessions`, `decision_options`, `session_participants`, and `session_invitations`. It uses the contract vocabulary for category, mode, status, role, and readiness. Options have a per-session unique stable position; a server create transaction must call `assert_session_option_count` to enforce the 2-12 total before a room is usable. SQL enforces field domains, foreign keys, cascading session deletion, one host per session, and non-empty credential hashes. Descriptions and hard constraints remain deliberately omitted. Invitation expiry is nullable and has no default lifetime.
+
+## Secure session operations
+
+Migration `20260724190000_add_session_operations_v1.sql` adds `create_decision_session_v1` and `join_decision_session_v1`. Create validates the request at the database boundary, then atomically inserts the session, exactly one host, ordered two-to-twelve options, and an invitation-token hash before asserting the option count. Join atomically resolves a non-revoked, non-expired invitation and inserts one guest with only a guest-access-token hash. Any failure rolls back the complete RPC transaction; no partial session, option, invitation, or participant is retained.
+
+Raw invitation material is delivered once through the safe `inviteUrl` response and is never persisted. Raw guest access material exists only in the server-internal join result for a future HttpOnly-cookie adapter; only its one-way hash is stored. RPC results include safe room data and identifiers, never invitation or guest hashes. Revoked, expired, and missing invitations share a safe failure path. Frontend integration, realtime updates, ballots, voting, and result persistence remain future work.
