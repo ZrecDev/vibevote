@@ -1,13 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { PrivateBallot, VotingProgress, ParticipantList } from './room-components';
-import { ResultScreen, RoomState } from './room-screens';
+import { fixtures } from '@vibevote/contracts';
+import { PrivateBallot, VotingProgress } from './mock-room-components';
+import { ParticipantList } from './room-components';
+import { MockResultScreen } from './mock-result-screen';
+import { RoomState } from './room-screens';
 
 describe('mock room experience', () => {
   it('renders contract-backed participant role and readiness states', () => {
-    render(<ParticipantList />);
-    expect(screen.getAllByText('Ready')).toHaveLength(2);
+    render(<ParticipantList participants={fixtures.lobbyRoom.participants} />);
+    expect(screen.getAllByText('Ready')).toHaveLength(1);
     expect(screen.getByText('Waiting')).toBeInTheDocument();
   });
 
@@ -34,7 +37,7 @@ describe('mock room experience', () => {
   });
 
   it('renders winner explanation and backup option', () => {
-    render(<ResultScreen />);
+    render(<MockResultScreen />);
     expect(screen.getByRole('heading', { name: /why this won/i })).toBeInTheDocument();
     expect(screen.getByText(/strongest eligible option/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /backup option/i })).toBeInTheDocument();

@@ -6,17 +6,20 @@ Foundation — first polished mock-only mobile room experience.
 
 ## Experience Lead
 
-Branch: `experience/room-shell`
+Branch: `experience/session-api-integration-v1`
+Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-experience-session-api`
 
-Current task: Polished mock room visual rebuild.
+Current task: Public session API integration.
 
-Completed: Rebuilt the mock room experience into a cohesive mobile-first visual system: warm light/dark themes, refreshed home/create flow, a stronger room lobby and invite/QR presentation, role/readiness participant cards, private ballot controls, aggregate-only progress, winner/backup reveal, and polished state surfaces. The session-v1 `role` and `readiness` model remains intact; no backend or decision logic was added.
+Completed: Added the typed public client adapter at `apps/web/features/session/session-client.ts`. Create validates and submits the public create contract with field-associated errors and two-to-twelve deterministic options; join safely reads `?invite=` and submits the public join contract; and the room route bootstraps authenticated host or guest state through the HttpOnly cookie. Retry makes a fresh request and route changes cannot retain stale HOST controls. Production create, join, and bootstrap routes no longer use the mock room as their source of truth.
 
-Still needed: Hook the screens to platform-owned session, invitation, ballot, realtime, and finalization behavior once those contracts and services are available. Validate with user testing and approved visual direction.
+Still needed: invitation sharing from a later safe host response, readiness, voting, realtime, decision calculation, and results.
 
-Files touched: `apps/web/app/globals.css`, `apps/web/app/page.tsx`, `apps/web/app/create/page.tsx`, `apps/web/components/app-shell.tsx`, `apps/web/features/room/room-components.tsx`, `apps/web/features/room/room-screens.tsx`, `apps/web/features/room/room-components.test.tsx`, `docs/HANDOFF.md`.
+Files touched: create, join, and room routes; session adapter and adapter tests; create, join, and room-bootstrap tests; the two-context browser-flow test; room screen; and this Experience handoff section.
 
-Tests run: `pnpm --filter @vibevote/web lint` (passed); `pnpm --filter @vibevote/web typecheck` (passed); `pnpm exec vitest run apps/web/app/page.test.tsx apps/web/components/ui.test.tsx apps/web/features/room/room-components.test.tsx` (passed: 3 files, 9 tests); `pnpm --filter @vibevote/web build` (passed); `git diff --check` (passed); Chromium smoke at 390×844 (passed: lobby/invite, private ballot, keyboard Veto, aggregate-only progress, winner/backup, and no horizontal overflow).
+Verification: adapter tests passed (1 file, 11 tests); create-page tests passed (1 file, 4 tests); join-page tests passed (1 file, 3 tests); room-bootstrap tests passed (1 file, 3 tests); existing Experience tests passed (3 files, 9 tests); Platform route tests passed (3 files, 26 tests); live local server-operation integration passed (1 file, 1 test); full unit suite passed (20 files, 99 tests; 1 intentionally skipped live test without local environment); `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build` all passed. `pnpm test:e2e` passed (2 tests): at 390×844, isolated host and guest contexts created, joined, bootstrapped, and reloaded a real local room; host controls rendered only for HOST. Create/join/room states have accessible names, field-associated validation errors, alert announcements, disabled pending buttons, and keyboard-operable retry. Local VibeVote Supabase was verified at ports 55320–55329. Client and build-output scans found no server imports, cookie access, browser credential storage, `participantAccessToken`, token hashes, service-role key, or session-flow mock fallback; `git diff --check` passed. Production and Vercel-preview session API calls intentionally fail closed until a durable serverless-compatible rate-limit provider is implemented; local real create, join, and bootstrap are the integration proof for this batch.
+
+CI E2E note: Local `pnpm test:e2e` runs both browser tests against the isolated VibeVote Supabase stack. Generic GitHub CI intentionally skips the live local-Supabase host/guest test because it does not provision that stack; a prepared CI environment can opt in with `VIBEVOTE_RUN_LIVE_SESSION_E2E=1`. Production and preview session API behavior remains intentionally fail-closed.
 
 Known issues: Invitation copy, room creation, voting, share plan, directions, readiness, and reconnection UI are intentionally local presentation only; QR is a styled placeholder, not an encoded link. The mock `finishedParticipantCount` is fixed and no polling/realtime happens.
 

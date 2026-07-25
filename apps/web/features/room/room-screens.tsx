@@ -1,23 +1,21 @@
-import Link from 'next/link';
+import type { PublicRoomState } from '@vibevote/contracts';
 import { Button, Card } from '@/components/ui';
-import { InviteCard, ParticipantList, VotingProgress } from './room-components';
-import { mockResult, mockRoom } from './mock-room';
+import { ParticipantList } from './room-components';
 
-export function LobbyScreen() {
+export function LobbyScreen({ room, isHost }: { room: PublicRoomState; isHost: boolean }) {
   return (
     <div className="stack">
       <section className="hero-card card">
         <span className="status-pill">Room lobby</span>
-        <h1 className="room-title">{mockRoom.session.title}</h1>
+        <h1 className="room-title">{room.session.title}</h1>
         <p className="lede">Find the choice the group can genuinely get behind.</p>
         <div className="room-meta">
           <span>Best Fit</span>
-          <span>{mockRoom.session.options.length} options</span>
-          <span>{mockRoom.participants.length} people</span>
+          <span>{room.session.options.length} options</span>
+          <span>{room.participants.length} people</span>
         </div>
       </section>
       <div className="stack stack--two">
-        <InviteCard />
         <Card>
           <div className="section-heading">
             <div>
@@ -25,9 +23,9 @@ export function LobbyScreen() {
               <h2>Readiness is shared.</h2>
               <p className="muted">Votes are never visible.</p>
             </div>
-            <span className="status-pill">{mockRoom.participants.length}</span>
+            <span className="status-pill">{room.participants.length}</span>
           </div>
-          <ParticipantList />
+          <ParticipantList participants={room.participants} />
         </Card>
       </div>
       <Card>
@@ -37,73 +35,25 @@ export function LobbyScreen() {
             <h2>Everyone considers the same options.</h2>
           </div>
         </div>
-        {mockRoom.session.options.map((option) => (
+        {room.session.options.map((option) => (
           <div className="option-line" key={option.id}>
             <span className="option-number">{option.order + 1}</span>
             <strong>{option.label}</strong>
           </div>
         ))}
       </Card>
-      <div className="row">
-        <Link href={`/room/${mockRoom.session.id}/vote`}>
-          <Button>Vote privately</Button>
-        </Link>
-        <Link href={`/room/${mockRoom.session.id}/result`}>
-          <Button variant="quiet">Preview the result</Button>
-        </Link>
-      </div>
+      <div className="row">{isHost && <Button disabled>Start voting (coming soon)</Button>}</div>
     </div>
   );
 }
 
-export function ResultScreen() {
-  const winner = mockRoom.session.options.find(
-    (option) => option.id === mockResult.winnerOptionId,
-  )!;
-  return (
-    <div className="stack">
-      <section className="page-intro">
-        <p className="eyebrow">Decision complete</p>
-        <h1 className="room-title">A plan that feels fair.</h1>
-        <p className="lede">The room is ready to move forward together.</p>
-      </section>
-      <Card className="winner">
-        <p className="eyebrow">Tonight’s pick</p>
-        <h2>{winner.label}</h2>
-        <p>Best Fit · ready for the group</p>
-      </Card>
-      <Card>
-        <p className="eyebrow">The reasoning</p>
-        <h2>Why this won</h2>
-        <div className="result-why">
-          <p>{mockResult.explanation}</p>
-          <p className="muted" style={{ marginBottom: 0, fontSize: '.84rem' }}>
-            This is an aggregate explanation. No person’s ballot or veto is revealed.
-          </p>
-        </div>
-      </Card>
-      <Card className="backup">
-        <p className="eyebrow">Plan B</p>
-        <h2>Backup option</h2>
-        <p style={{ marginBottom: 0 }}>
-          <strong>{mockRoom.session.options[1]!.label}</strong> is ready if the plan changes.
-        </p>
-      </Card>
-      <VotingProgress finished={3} total={3} />
-      <Card className="action-card">
-        <p className="eyebrow">Next step</p>
-        <h2>Make it easy to follow through.</h2>
-        <p className="muted">These actions are display-only in this mock.</p>
-        <div className="row">
-          <Button>Share the plan</Button>
-          <Button variant="secondary">Open directions</Button>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-export function RoomState({ kind }: { kind: 'loading' | 'error' | 'disconnected' | 'empty' }) {
+export function RoomState({
+  kind,
+  onRetry,
+}: {
+  kind: 'loading' | 'error' | 'disconnected' | 'empty';
+  onRetry?: () => void;
+}) {
   const content = {
     loading: ['⌛', 'Getting your room ready', 'Just a moment while the room takes shape.'],
     error: [
@@ -133,7 +83,11 @@ export function RoomState({ kind }: { kind: 'loading' | 'error' | 'disconnected'
           {content[1]}
         </h1>
         <p className="muted">{content[2]}</p>
-        {kind !== 'loading' && <Button>{kind === 'empty' ? 'Add an option' : 'Try again'}</Button>}
+        {kind !== 'loading' && (
+          <Button onClick={kind === 'empty' ? undefined : onRetry}>
+            {kind === 'empty' ? 'Add an option' : 'Try again'}
+          </Button>
+        )}
       </div>
     </Card>
   );
