@@ -12,7 +12,12 @@ describe('mock room experience', () => {
   });
 
   it('presents private voting without exposing individual choices in progress', () => {
-    render(<><PrivateBallot /><VotingProgress /></>);
+    render(
+      <>
+        <PrivateBallot />
+        <VotingProgress />
+      </>,
+    );
     expect(screen.getByText(/only progress is shared/i)).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
     expect(screen.getByText(/2 of 3 people have finished/i)).toBeInTheDocument();
@@ -37,7 +42,11 @@ describe('mock room experience', () => {
 
   it.each(['loading', 'error'] as const)('renders the %s state', (kind) => {
     render(<RoomState kind={kind} />);
-    expect(screen.getByText(kind === 'loading' ? /getting your room ready/i : /could not load this room/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        kind === 'loading' ? /getting your room ready/i : /could not load this room/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('includes a compact viewport layout for 390px screens', () => {
