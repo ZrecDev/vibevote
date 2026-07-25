@@ -1,32 +1,46 @@
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
 import { Button, Card } from '@/components/ui';
+
 export default function HomePage() {
   return (
     <AppShell>
-      <section className="space-y-6 py-8">
-        <p className="text-sm font-semibold uppercase tracking-[.18em] text-[var(--accent)]">
-          Private group decisions
-        </p>
-        <h1 className="max-w-xl text-5xl font-bold tracking-tight sm:text-6xl">
-          Stop debating.
+      <section className="hero-card card">
+        <p className="eyebrow">Private group decisions</p>
+        <h1>
+          Find a plan
           <br />
-          Decide together.
+          that feels fair.
         </h1>
-        <p className="max-w-lg text-lg text-[var(--muted)]">
-          Create one room, invite your people, and reach a fair decision everyone can live with.
+        <p className="lede">
+          Bring a few good options, let every person vote privately, and leave with a plan the group
+          can live with.
         </p>
-        <Link href="/create">
-          <Button>Start a decision</Button>
-        </Link>
+        <div className="row">
+          <Link href="/create">
+            <Button>Start a decision</Button>
+          </Link>
+          <Link href="/room/550e8400-e29b-41d4-a716-446655440000">
+            <Button variant="secondary">View a room</Button>
+          </Link>
+        </div>
       </section>
-      <Card>
-        <h2 className="text-xl font-semibold">Foundation status</h2>
-        <p className="text-[var(--muted)]">
-          The app shell is ready. Sessions, votes, accounts, and realtime are intentionally not
-          implemented yet.
-        </p>
-      </Card>
+      <section className="stack" style={{ marginTop: '1rem' }}>
+        <Card>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">One calm flow</p>
+              <h2>Less debate. More dinner.</h2>
+            </div>
+          </div>
+          <div className="room-meta">
+            <span>1 · Add options</span>
+            <span>2 · Invite everyone</span>
+            <span>3 · Vote privately</span>
+            <span>4 · Make a plan</span>
+          </div>
+        </Card>
+      </section>
     </AppShell>
   );
 }

@@ -1,4 +1,12 @@
-import { PlaceholderPage } from '../../../placeholder-page';
+import { AppShell } from '@/components/app-shell';
+import { PrivateBallot, VotingProgress } from '@/features/room/room-components';
 export default function Page() {
-  return <PlaceholderPage title="Private voting" />;
+  return (
+    <AppShell>
+      <PrivateBallot />
+      <div style={{ marginTop: '1rem' }}>
+        <VotingProgress />
+      </div>
+    </AppShell>
+  );
 }

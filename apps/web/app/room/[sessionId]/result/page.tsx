@@ -1,4 +1,9 @@
-import { PlaceholderPage } from '../../../placeholder-page';
+import { AppShell } from '@/components/app-shell';
+import { ResultScreen } from '@/features/room/room-screens';
 export default function Page() {
-  return <PlaceholderPage title="Result" />;
+  return (
+    <AppShell>
+      <ResultScreen />
+    </AppShell>
+  );
 }
