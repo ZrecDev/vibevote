@@ -68,6 +68,7 @@ export const createSessionRequestSchema = z
     category: decisionCategorySchema,
     mode: decisionModeSchema,
     options: z.array(createDecisionOptionSchema).min(2).max(12),
+    hostDisplayName: z.string().trim().min(1).max(60),
   })
   .strict();
 
@@ -126,6 +127,12 @@ export const joinSessionRequestSchema = z
 
 export const joinSessionResponseSchema = z.object({ session: participantRoomStateSchema }).strict();
 
+/** Safe authenticated bootstrap response; credential material is never public. */
+export const bootstrapSessionResponseSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('HOST'), session: hostRoomStateSchema }).strict(),
+  z.object({ kind: z.literal('GUEST'), session: participantRoomStateSchema }).strict(),
+]);
+
 /** Valid vocabulary only; persistence and enforcement remain server work. */
 export const sessionTransitionSchema = z
   .object({ from: sessionStatusSchema, to: sessionStatusSchema })
@@ -183,6 +190,7 @@ export type ServerSessionState = z.infer<typeof serverSessionStateSchema>;
 export type CreateSessionResponse = z.infer<typeof createSessionResponseSchema>;
 export type JoinSessionRequest = z.infer<typeof joinSessionRequestSchema>;
 export type JoinSessionResponse = z.infer<typeof joinSessionResponseSchema>;
+export type BootstrapSessionResponse = z.infer<typeof bootstrapSessionResponseSchema>;
 export type SessionTransition = z.infer<typeof sessionTransitionSchema>;
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 export type ApiError = z.infer<typeof apiErrorSchema>;

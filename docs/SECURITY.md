@@ -12,3 +12,29 @@ Every future user-facing table requires RLS and a negative authorization test in
 - Individual ballots and private preferences remain server-only until a later explicitly approved participant-private contract is required. Realtime may announce aggregate progress only.
 - API errors use a closed machine-readable code enum and safe client copy. They must not expose stack traces, SQL/provider errors, internal exception messages, authorization details, invitation secrets, or credentials.
 - Server-only contract fields include invitation-token hashes and decision-engine random seeds. Server endpoints remain responsible for transition validation, authorization, and result finalization.
+
+## Persistence foundation RLS
+
+All persistence tables enable RLS and grant no direct privileges to `anon` or `authenticated`; no policies are created in this batch. Raw invitation and guest tokens are generated and consumed only by future server operations, while only non-empty hashes are persisted. Invitation hashes, guest credential hashes, and all future internal fields must never be projected to clients. Future create/join operations must use server-owned authorization and safe response projections, with actual negative anonymous and authenticated authorization tests run against local Supabase before enabling access.
+
+## Session-operation RPC boundary
+
+`create_decision_session_v1` and `join_decision_session_v1` are `SECURITY DEFINER` functions solely to perform their reviewed atomic writes while direct table access remains deny-by-default. Each sets `search_path` to empty, schema-qualifies database references, uses no dynamic SQL, revokes execution from `PUBLIC`, `anon`, and `authenticated`, and grants execution only to `service_role`. RLS remains enabled and client roles retain no direct table access.
+
+The server constructs the service-role client only from server-only credentials. Tokens use cryptographically secure Node bytes, URL-safe encoding, and deterministic one-way SHA-256 hashing. The raw invitation is returned once via `inviteUrl`; the raw guest token is returned only in a server-internal result for the future HttpOnly-cookie adapter. Neither raw token nor hash is logged, stored in public room state, exposed through safe RPC results, or sent to browser code. Invalid, revoked, and expired invitations map to stable safe errors without revealing why resolution failed. HTTP adapters must add rate limiting and abuse protection before public exposure.
+
+## Participant credential bootstrap
+
+Hosts and guests use one credential model: `session_participants.participant_access_token_hash`. New create and join operations generate a cryptographically secure raw participant token, persist only its SHA-256 hash, and return the raw value only inside the server-internal operation result. Existing guest hashes are preserved by the additive migration. Legacy host rows without a hash remain intact but cannot resume through bootstrap; no raw credential is fabricated for them.
+
+Successful create and join responses set `vibevote_participant_v1`, an `HttpOnly`, `SameSite=Lax` session cookie scoped exactly to `/api/v1/sessions/{sessionId}`. It is `Secure` outside explicit development and test, has no `Max-Age` or `Expires`, and is never available to client JavaScript, JSON responses, logs, or storage. `GET /api/v1/sessions/{sessionId}` reads only that cookie; query strings, request bodies, and authorization headers are not credential sources. Missing, invalid, and mismatched credentials intentionally share the same safe unauthorized response.
+
+`get_participant_session_v1`, `create_decision_session_v1`, and `join_decision_session_v1` are `SECURITY DEFINER` RPCs with an empty search path and schema-qualified references. `PUBLIC`, `anon`, and `authenticated` cannot execute them; only `service_role` can. RLS remains enabled and direct client table access remains denied. RPC results and public bootstrap contracts exclude invitation hashes, participant hashes, and raw tokens. Server helpers and routes use `server-only` protection.
+
+## Session HTTP adapters
+
+`POST /api/v1/sessions` and `POST /api/v1/sessions/join` are server-only adapters. Create requires the strict contract, including a trimmed `hostDisplayName` of 1-60 characters; join accepts only its strict invitation and display-name contract. Both accept only `application/json` (a charset parameter is permitted), bound request bodies to 16 KiB before parsing, and return safe JSON errors without exception details.
+
+Deployments must set `VIBEVOTE_APP_ORIGIN` (and the existing server-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`) without committing values. This origin is the sole authority for invitation URL construction and same-origin checks: cross-site `Origin` headers are rejected, missing `Origin` is deliberately allowed for same-site navigation, forwarded/Host headers are never trusted, and the routes emit no broad CORS headers. Production and preview fail closed if the configured origin or a durable rate limiter is unavailable. Development and test are explicitly permissive only to support local execution. A durable serverless-compatible limiter must be supplied before public production exposure; no in-memory production limiter is claimed.
+
+Create, join, and bootstrap remain subject to trusted-origin validation, bounded JSON parsing where applicable, safe errors, no broad CORS headers, and the shared rate-limit boundary. Production and preview fail closed until a durable serverless-compatible rate-limit provider is configured.

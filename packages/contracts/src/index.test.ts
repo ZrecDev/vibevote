@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   apiErrorSchema,
   apiErrorCodeSchema,
+  bootstrapSessionResponseSchema,
   createSessionRequestSchema,
   fixtures,
   joinSessionRequestSchema,
@@ -12,6 +13,38 @@ import {
 const options = [{ label: 'North Star Cafe' }, { label: 'Green Bowl' }];
 
 describe('v1 session contracts', () => {
+  it('strictly discriminates safe bootstrap host and guest room responses', () => {
+    const host = {
+      kind: 'HOST',
+      session: {
+        ...fixtures.lobbyRoom,
+        currentParticipantId: fixtures.lobbyRoom.participants[0]!.id,
+        hostControls: { canStartVoting: true, canCancelSession: true },
+      },
+    };
+    const guest = {
+      kind: 'GUEST',
+      session: {
+        ...fixtures.lobbyRoom,
+        currentParticipantId: fixtures.lobbyRoom.participants[1]!.id,
+      },
+    };
+    expect(bootstrapSessionResponseSchema.safeParse(host).success).toBe(true);
+    expect(bootstrapSessionResponseSchema.safeParse(guest).success).toBe(true);
+    expect(
+      bootstrapSessionResponseSchema.safeParse({
+        ...guest,
+        session: { ...guest.session, hostControls: host.session.hostControls },
+      }).success,
+    ).toBe(false);
+    for (const invalid of [
+      { session: guest.session },
+      { kind: 'GUEST', session: guest.session, participantAccessToken: 'secret' },
+      { kind: 'HOST', session: host.session, participant_access_token_hash: 'a'.repeat(64) },
+    ]) {
+      expect(bootstrapSessionResponseSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
   it('parses a valid create-session request', () => {
     expect(
       createSessionRequestSchema.safeParse({
@@ -19,8 +52,42 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options,
+        hostDisplayName: '  Alex  ',
       }).success,
     ).toBe(true);
+  });
+
+  it('requires a trimmed host display name and keeps the schema strict', () => {
+    expect(
+      createSessionRequestSchema.parse({
+        title: 'Dinner',
+        category: 'EAT',
+        mode: 'BEST_FIT',
+        options,
+        hostDisplayName: '  Alex  ',
+      }).hostDisplayName,
+    ).toBe('Alex');
+    for (const hostDisplayName of ['', '   ', 'x'.repeat(61)]) {
+      expect(
+        createSessionRequestSchema.safeParse({
+          title: 'Dinner',
+          category: 'EAT',
+          mode: 'BEST_FIT',
+          options,
+          hostDisplayName,
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      createSessionRequestSchema.safeParse({
+        title: 'Dinner',
+        category: 'EAT',
+        mode: 'BEST_FIT',
+        options,
+        hostDisplayName: 'Alex',
+        extra: true,
+      }).success,
+    ).toBe(false);
   });
 
   it('accepts the minimum and maximum option counts', () => {
@@ -30,6 +97,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options,
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(true);
     expect(
@@ -38,6 +106,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options: Array.from({ length: 12 }, (_, index) => ({ label: `Option ${index + 1}` })),
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(true);
   });
@@ -49,6 +118,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options: options.slice(0, 1),
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(false);
     expect(
@@ -57,6 +127,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'BEST_FIT',
         options: Array.from({ length: 13 }, (_, index) => ({ label: `Option ${index + 1}` })),
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(false);
   });
@@ -68,6 +139,7 @@ describe('v1 session contracts', () => {
         category: 'CUSTOM',
         mode: 'RANDOM',
         options,
+        hostDisplayName: 'Alex',
       }).success,
     ).toBe(false);
     expect(sessionStatusSchema.safeParse('OPEN').success).toBe(false);
