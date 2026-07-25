@@ -2,7 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PrivateBallot, VotingProgress, ParticipantList } from './room-components';
-import { ResultScreen, RoomState } from './room-screens';
+import { MockResultScreen } from './mock-result-screen';
+import { RoomState } from './room-screens';
 
 describe('mock room experience', () => {
   it('renders contract-backed participant role and readiness states', () => {
@@ -34,7 +35,7 @@ describe('mock room experience', () => {
   });
 
   it('renders winner explanation and backup option', () => {
-    render(<ResultScreen />);
+    render(<MockResultScreen />);
     expect(screen.getByRole('heading', { name: /why this won/i })).toBeInTheDocument();
     expect(screen.getByText(/strongest eligible option/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /backup option/i })).toBeInTheDocument();

@@ -1,9 +1,9 @@
 import { AppShell } from '@/components/app-shell';
-import { ResultScreen } from '@/features/room/room-screens';
+import { MockResultScreen } from '@/features/room/mock-result-screen';
 export default function Page() {
   return (
     <AppShell>
-      <ResultScreen />
+      <MockResultScreen />
     </AppShell>
   );
 }

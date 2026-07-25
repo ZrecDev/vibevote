@@ -1,9 +1,10 @@
 import { AppShell } from '@/components/app-shell';
-import { LobbyScreen } from '@/features/room/room-screens';
-export default function Page() {
+import { RoomBootstrap } from '@/features/room/room-bootstrap';
+export default async function Page({ params }: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = await params;
   return (
     <AppShell>
-      <LobbyScreen />
+      <RoomBootstrap sessionId={sessionId} />
     </AppShell>
   );
 }
