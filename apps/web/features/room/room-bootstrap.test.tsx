@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { fixtures } from '@vibevote/contracts';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { RoomBootstrap } from './room-bootstrap';
 
 const { bootstrapSession } = vi.hoisted(() => ({ bootstrapSession: vi.fn() }));
@@ -52,5 +54,28 @@ describe('RoomBootstrap', () => {
     await waitFor(() => expect(bootstrapSession).toHaveBeenCalledTimes(2));
     await screen.findByText(guest.session.session.title);
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('ignores an older retry response after the route changes', async () => {
+    let resolveRetry!: (value: typeof host) => void;
+    bootstrapSession
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockReturnValueOnce(new Promise((resolve) => (resolveRetry = resolve)))
+      .mockResolvedValueOnce(guest);
+    const { rerender } = render(<RoomBootstrap sessionId="old-session" />);
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+    rerender(<RoomBootstrap sessionId="new-session" />);
+    await screen.findByText(guest.session.session.title);
+    resolveRetry(host);
+    await waitFor(() => expect(screen.queryByRole('button', { name: /start voting/i })).toBeNull());
+  });
+
+  it('keeps the authenticated bootstrap dependency path free of mock fixtures', () => {
+    for (const file of ['room-bootstrap.tsx', 'room-screens.tsx', 'room-components.tsx']) {
+      expect(readFileSync(resolve(__dirname, file), 'utf8')).not.toMatch(
+        /mock-room|mockResult|mockRoom/,
+      );
+    }
   });
 });

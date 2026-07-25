@@ -16,6 +16,7 @@ const modes = decisionModeSchema.options;
 export default function CreatePage() {
   const router = useRouter();
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const submittingRef = useRef(false);
   const [form, setForm] = useState({
     hostDisplayName: '',
     title: '',
@@ -30,7 +31,7 @@ export default function CreatePage() {
     setForm((f) => ({ ...f, [key]: value }));
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || submittingRef.current) return;
     const parsed = createSessionRequestSchema.safeParse({
       ...form,
       options: form.options.map((label) => ({ label })),
@@ -44,6 +45,7 @@ export default function CreatePage() {
     }
     setError('');
     setInvalidFields([]);
+    submittingRef.current = true;
     setPending(true);
     try {
       const result = await createSession(parsed.data);
@@ -55,6 +57,7 @@ export default function CreatePage() {
           : 'Something went wrong. Please try again.',
       );
       setPending(false);
+      submittingRef.current = false;
       requestAnimationFrame(() => errorRef.current?.focus());
     }
   }

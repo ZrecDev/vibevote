@@ -1,6 +1,6 @@
 import { Button, Card } from '@/components/ui';
 import { mockResult, mockRoom } from './mock-room';
-import { VotingProgress } from './room-components';
+import { VotingProgress } from './mock-room-components';
 
 export function MockResultScreen() {
   const winner = mockRoom.session.options.find(

@@ -64,4 +64,14 @@ describe('JoinPage', () => {
     expect(screen.queryByText(/database password/i)).not.toBeInTheDocument();
     expect(storage).not.toHaveBeenCalled();
   });
+
+  it('prevents repeated submit events before React rerenders', () => {
+    joinSession.mockReturnValue(new Promise(() => undefined));
+    render(<JoinPage />);
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Sam' } });
+    const form = screen.getByRole('button', { name: /join room/i }).closest('form')!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(joinSession).toHaveBeenCalledTimes(1);
+  });
 });

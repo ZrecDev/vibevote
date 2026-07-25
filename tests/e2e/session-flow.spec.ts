@@ -52,6 +52,7 @@ test('host and guest bootstrap independently through browser-managed cookies', a
   expect(joinPayload).not.toHaveProperty('participantAccessToken');
   const guestSessionId = joinPayload.data.session.session.id as string;
   await expect(guest).toHaveURL(new RegExp(`/room/${guestSessionId}$`));
+  await expect(guest.getByRole('heading', { name: 'Friday dinner' })).toBeVisible();
   await expect(guest.getByRole('button', { name: /start voting/i })).toHaveCount(0);
 
   await host.reload();

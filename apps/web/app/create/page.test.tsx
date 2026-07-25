@@ -73,6 +73,20 @@ describe('CreatePage', () => {
       expect(push).toHaveBeenCalledWith(`/room/${fixtures.lobbyRoom.session.id}`),
     );
   });
+  it('prevents repeated submit events before React rerenders', async () => {
+    let resolveCreate!: (value: {
+      session: { session: typeof fixtures.lobbyRoom.session };
+    }) => void;
+    createSession.mockReturnValue(new Promise((resolve) => (resolveCreate = resolve)));
+    render(<CreatePage />);
+    fillValidForm();
+    const form = screen.getByRole('button', { name: /create room/i }).closest('form')!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(createSession).toHaveBeenCalledTimes(1);
+    resolveCreate({ session: { session: fixtures.lobbyRoom.session } });
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+  });
   it('keeps input and exposes safe recoverable failures', async () => {
     createSession.mockRejectedValue(new Error('internal secret'));
     render(<CreatePage />);

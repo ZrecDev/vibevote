@@ -15,9 +15,10 @@ export default function JoinPage() {
   const [invalid, setInvalid] = useState(false);
   const [pending, setPending] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const submittingRef = useRef(false);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || submittingRef.current) return;
     const parsed = joinSessionRequestSchema.safeParse({ inviteToken: token, displayName });
     if (!parsed.success) {
       setInvalid(true);
@@ -29,6 +30,7 @@ export default function JoinPage() {
     }
     setError('');
     setInvalid(false);
+    submittingRef.current = true;
     setPending(true);
     try {
       const result = await joinSession(parsed.data);
@@ -40,6 +42,7 @@ export default function JoinPage() {
           : 'Something went wrong. Please try again.',
       );
       setPending(false);
+      submittingRef.current = false;
       requestAnimationFrame(() => errorRef.current?.focus());
     }
   }
