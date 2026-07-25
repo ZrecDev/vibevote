@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+const skipLiveSessionE2E =
+  Boolean(process.env.CI) && process.env.VIBEVOTE_RUN_LIVE_SESSION_E2E !== '1';
+
+test.skip(skipLiveSessionE2E, 'Requires the isolated local VibeVote Supabase stack.');
+
 test('host and guest bootstrap independently through browser-managed cookies', async ({
   browser,
 }) => {
