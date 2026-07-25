@@ -51,7 +51,7 @@ describe('mock room experience', () => {
 
   it('includes a compact viewport layout for 390px screens', () => {
     const styles = readFileSync(resolve(process.cwd(), 'apps/web/app/globals.css'), 'utf8');
-    expect(styles).toContain('@media (max-width:390px)');
-    expect(styles).toContain('.invite-layout { grid-template-columns:1fr; }');
+    expect(styles).toContain('@media (max-width: 390px)');
+    expect(styles).toContain('.invite-layout {\n    grid-template-columns: 1fr;\n  }');
   });
 });
