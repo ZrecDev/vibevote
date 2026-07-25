@@ -1,8 +1,10 @@
+import 'server-only';
 import { createSession } from '@vibevote/server';
 import { createSessionRequestSchema } from '@vibevote/contracts';
 import { checkSessionRateLimit, type SessionRateLimiter } from '@/lib/server/rate-limit';
 import { json, operationError, readJson, safeError } from '@/lib/server/http';
 import { trustedOrigin } from '@/lib/server/origin';
+import { participantCookie } from '@/lib/server/participant-cookie';
 
 export async function postSession(
   request: Request,
@@ -27,10 +29,17 @@ export async function postSession(
   if (parsed.error) return parsed.error;
   try {
     const input = createSessionRequestSchema.parse(parsed.value);
-    return json({
+    const result = await createSession(input, { invitationBaseUrl: `${trust.origin}/join` });
+    const response = json({
       ok: true,
-      data: await createSession(input, { invitationBaseUrl: `${trust.origin}/join` }),
+      data: result.response,
     });
+    const cookie = participantCookie(
+      result.response.invitation.sessionId,
+      result.participantAccessToken,
+    );
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+    return response;
   } catch (error) {
     return operationError(error);
   }

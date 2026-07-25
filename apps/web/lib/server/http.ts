@@ -60,7 +60,14 @@ export function operationError(error: unknown) {
   if (error instanceof ZodError)
     return safeError('INVALID_REQUEST', 'The request is not valid.', 400);
   if (error instanceof SafeOperationError) {
-    const status = error.code === 'INVALID_INVITE' ? 400 : error.code === 'CONFLICT' ? 409 : 500;
+    const status =
+      error.code === 'INVALID_INVITE' || error.code === 'INVALID_REQUEST'
+        ? 400
+        : error.code === 'CONFLICT'
+          ? 409
+          : error.code === 'UNAUTHORIZED'
+            ? 401
+            : 500;
     return safeError(error.code, error.message, status, error.retryable);
   }
   return safeError('INTERNAL_ERROR', 'Something went wrong. Try again.', 500, true);

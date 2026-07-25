@@ -26,16 +26,19 @@ describe('POST /api/v1/sessions/join', () => {
         currentParticipantId: fixtures.lobbyRoom.participants[1]!.id,
       },
     };
-    joinSession.mockResolvedValue({ response: responseData, guestAccessToken: 'guest-secret' });
+    joinSession.mockResolvedValue({
+      response: responseData,
+      participantAccessToken: 'participant-secret',
+    });
     const response = await postJoinSession(request(JSON.stringify(input)), {
       rateLimit: async () => 'allowed',
     });
     expect(response.status).toBe(200);
-    expect(await response.text()).not.toContain('guest-secret');
+    expect(await response.text()).not.toContain('participant-secret');
     const cookie = response.headers.get('set-cookie') ?? '';
-    expect(cookie).toContain('vibevote_guest_v1=guest-secret');
+    expect(cookie).toContain('vibevote_participant_v1=participant-secret');
     expect(cookie).toContain('HttpOnly');
-    expect(cookie).toContain('Path=/api/v1/sessions');
+    expect(cookie).toContain(`Path=/api/v1/sessions/${responseData.session.session.id}`);
     expect(cookie).not.toMatch(/Max-Age|Expires/);
     expect(response.headers.get('access-control-allow-origin')).toBeNull();
   });
@@ -48,7 +51,7 @@ describe('POST /api/v1/sessions/join', () => {
           currentParticipantId: fixtures.lobbyRoom.participants[1]!.id,
         },
       },
-      guestAccessToken: 'guest-secret',
+      participantAccessToken: 'participant-secret',
     });
     expect(
       (

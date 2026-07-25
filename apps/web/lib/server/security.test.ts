@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { guestCookie, GUEST_COOKIE_NAME } from './guest-cookie';
+import { participantCookie, PARTICIPANT_COOKIE_NAME } from './participant-cookie';
 import { trustedOrigin } from './origin';
 import { checkSessionRateLimit } from './rate-limit';
 
@@ -53,16 +53,16 @@ describe('session rate limiting', () => {
   });
 });
 
-describe('guest cookie', () => {
+describe('participant cookie', () => {
   it('has the scoped, session-only credential attributes', () => {
     process.env = { ...process.env, NODE_ENV: 'production' };
-    const cookie = guestCookie('guest-secret');
-    expect(cookie.name).toBe(GUEST_COOKIE_NAME);
+    const cookie = participantCookie('550e8400-e29b-41d4-a716-446655440000', 'participant-secret');
+    expect(cookie.name).toBe(PARTICIPANT_COOKIE_NAME);
     expect(cookie.options).toEqual({
       httpOnly: true,
       sameSite: 'lax',
       secure: true,
-      path: '/api/v1/sessions',
+      path: '/api/v1/sessions/550e8400-e29b-41d4-a716-446655440000',
     });
     expect(JSON.stringify(cookie)).not.toContain('console');
   });
@@ -70,13 +70,28 @@ describe('guest cookie', () => {
   it('is secure in preview and disabled only in development and test', () => {
     for (const environment of ['production'] as const) {
       process.env = { ...process.env, NODE_ENV: environment };
-      expect(guestCookie('token').options.secure).toBe(true);
+      expect(
+        participantCookie('550e8400-e29b-41d4-a716-446655440000', 'token').options.secure,
+      ).toBe(true);
     }
     process.env = { ...process.env, NODE_ENV: 'production', VERCEL_ENV: 'preview' };
-    expect(guestCookie('token').options.secure).toBe(true);
+    expect(participantCookie('550e8400-e29b-41d4-a716-446655440000', 'token').options.secure).toBe(
+      true,
+    );
     for (const environment of ['development', 'test'] as const) {
       process.env = { ...process.env, NODE_ENV: environment };
-      expect(guestCookie('token').options.secure).toBe(false);
+      expect(
+        participantCookie('550e8400-e29b-41d4-a716-446655440000', 'token').options.secure,
+      ).toBe(false);
     }
+  });
+
+  it('rejects malformed session identifiers rather than allowing them to alter a cookie path', () => {
+    expect(() => participantCookie('not-a-uuid; Path=/', 'token')).toThrow(
+      'Session ID must be a UUID.',
+    );
+    const one = participantCookie('550e8400-e29b-41d4-a716-446655440000', 'one');
+    const two = participantCookie('6ba7b810-9dad-11d1-80b4-00c04fd430c8', 'two');
+    expect(one.options.path).not.toBe(two.options.path);
   });
 });

@@ -15,11 +15,11 @@ export async function joinSession(
 ): Promise<InternalJoinSessionResult> {
   try {
     const input = joinSessionRequestSchema.parse(request);
-    const guestAccessToken = generateToken();
+    const participantAccessToken = generateToken();
     const { data, error } = await client.rpc('join_decision_session_v1', {
       p_invitation_token_hash: hashToken(input.inviteToken),
       p_display_name: input.displayName,
-      p_guest_access_token_hash: hashToken(guestAccessToken),
+      p_participant_access_token_hash: hashToken(participantAccessToken),
     });
     if (error) throw error;
 
@@ -31,7 +31,7 @@ export async function joinSession(
       response: joinSessionResponseSchema.parse({
         session: projectRpcParticipantRoom(result.room),
       }),
-      guestAccessToken,
+      participantAccessToken,
     };
   } catch (error) {
     throw mapOperationError(error);

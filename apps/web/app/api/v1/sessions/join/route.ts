@@ -1,6 +1,7 @@
+import 'server-only';
 import { joinSession } from '@vibevote/server';
 import { joinSessionRequestSchema } from '@vibevote/contracts';
-import { guestCookie } from '@/lib/server/guest-cookie';
+import { participantCookie } from '@/lib/server/participant-cookie';
 import { json, operationError, readJson, safeError } from '@/lib/server/http';
 import { trustedOrigin } from '@/lib/server/origin';
 import { checkSessionRateLimit, type SessionRateLimiter } from '@/lib/server/rate-limit';
@@ -29,7 +30,10 @@ export async function postJoinSession(
   try {
     const result = await joinSession(joinSessionRequestSchema.parse(parsed.value));
     const response = json({ ok: true, data: result.response });
-    const cookie = guestCookie(result.guestAccessToken);
+    const cookie = participantCookie(
+      result.response.session.session.id,
+      result.participantAccessToken,
+    );
     response.cookies.set(cookie.name, cookie.value, cookie.options);
     return response;
   } catch (error) {
