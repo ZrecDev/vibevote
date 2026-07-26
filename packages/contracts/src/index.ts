@@ -81,6 +81,92 @@ export const invitationResponseSchema = z
   })
   .strict();
 
+/** Client-safe invitation state for the host's sharing surface. */
+export const invitationShareStateSchema = z
+  .object({
+    id: z.string().uuid(),
+    sessionId: z.string().uuid(),
+    inviteUrl: z.string().url(),
+    expiresAt: z.string().datetime().nullable(),
+    status: z.enum(['ACTIVE', 'REVOKED', 'EXPIRED']),
+  })
+  .strict();
+
+/** A host may request a fresh shareable invitation; expiry policy remains server-owned. */
+export const createInvitationRequestSchema = z.object({}).strict();
+
+export const createInvitationResponseSchema = z
+  .object({ invitation: invitationShareStateSchema })
+  .strict();
+
+export const updateReadinessRequestSchema = z
+  .object({ readiness: participantReadinessSchema })
+  .strict();
+
+export const updateReadinessResponseSchema = z
+  .object({ participant: sessionParticipantSchema })
+  .strict();
+
+/** One private preference per option. This shape is never part of room state or realtime data. */
+export const privateBallotEntrySchema = z
+  .object({ optionId: z.string().uuid(), value: voteValueSchema })
+  .strict();
+
+export const submitPrivateBallotRequestSchema = z
+  .object({ ballots: z.array(privateBallotEntrySchema).min(2).max(12) })
+  .strict()
+  .superRefine(({ ballots }, context) => {
+    const optionIds = new Set<string>();
+    for (const [index, ballot] of ballots.entries()) {
+      if (optionIds.has(ballot.optionId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Each option may appear only once in a ballot.',
+          path: ['ballots', index, 'optionId'],
+        });
+      }
+      optionIds.add(ballot.optionId);
+    }
+  });
+
+/** Safe aggregate-only voting progress. It never identifies who has finished. */
+export const aggregateProgressSchema = z
+  .object({
+    participantCount: z.number().int().positive(),
+    finishedParticipantCount: z.number().int().nonnegative(),
+  })
+  .strict()
+  .refine(
+    ({ participantCount, finishedParticipantCount }) =>
+      finishedParticipantCount <= participantCount,
+    {
+      message: 'Finished participants cannot exceed total participants.',
+      path: ['finishedParticipantCount'],
+    },
+  );
+
+export const submitPrivateBallotResponseSchema = z
+  .object({ progress: aggregateProgressSchema })
+  .strict();
+
+export const aggregateProgressResponseSchema = z
+  .object({ progress: aggregateProgressSchema })
+  .strict();
+
+/** A final, client-safe receipt. Immutability is enforced by the server and database. */
+export const resultReceiptSchema = z
+  .object({
+    id: z.string().uuid(),
+    sessionId: z.string().uuid(),
+    winnerOptionId: z.string().uuid(),
+    method: decisionModeSchema,
+    explanation: z.string().trim().min(1).max(500),
+    finalizedAt: z.string().datetime(),
+  })
+  .strict();
+
+export const finalResultResponseSchema = z.object({ result: resultReceiptSchema }).strict();
+
 export const publicRoomStateSchema = z
   .object({
     session: decisionSessionSchema,
@@ -183,6 +269,18 @@ export type DecisionSession = z.infer<typeof decisionSessionSchema>;
 export type ResultSummary = z.infer<typeof resultSummarySchema>;
 export type CreateSessionRequest = z.infer<typeof createSessionRequestSchema>;
 export type InvitationResponse = z.infer<typeof invitationResponseSchema>;
+export type InvitationShareState = z.infer<typeof invitationShareStateSchema>;
+export type CreateInvitationRequest = z.infer<typeof createInvitationRequestSchema>;
+export type CreateInvitationResponse = z.infer<typeof createInvitationResponseSchema>;
+export type UpdateReadinessRequest = z.infer<typeof updateReadinessRequestSchema>;
+export type UpdateReadinessResponse = z.infer<typeof updateReadinessResponseSchema>;
+export type PrivateBallotEntry = z.infer<typeof privateBallotEntrySchema>;
+export type SubmitPrivateBallotRequest = z.infer<typeof submitPrivateBallotRequestSchema>;
+export type AggregateProgress = z.infer<typeof aggregateProgressSchema>;
+export type SubmitPrivateBallotResponse = z.infer<typeof submitPrivateBallotResponseSchema>;
+export type AggregateProgressResponse = z.infer<typeof aggregateProgressResponseSchema>;
+export type ResultReceipt = z.infer<typeof resultReceiptSchema>;
+export type FinalResultResponse = z.infer<typeof finalResultResponseSchema>;
 export type PublicRoomState = z.infer<typeof publicRoomStateSchema>;
 export type ParticipantRoomState = z.infer<typeof participantRoomStateSchema>;
 export type HostRoomState = z.infer<typeof hostRoomStateSchema>;
