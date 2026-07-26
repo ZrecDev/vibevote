@@ -3,11 +3,42 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { postSession } from '@/app/api/v1/sessions/route';
 import { checkSessionRateLimit, sessionRateLimitPolicies } from './rate-limit';
 
-const enabled = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+const isolatedSupabaseOrigin = 'http://127.0.0.1:55321';
+
+function hasIsolatedVibeVoteSupabase(
+  environment: Record<string, string | undefined> = process.env,
+) {
+  if (!environment.SUPABASE_URL || !environment.SUPABASE_SERVICE_ROLE_KEY) return false;
+  try {
+    return new URL(environment.SUPABASE_URL).origin === isolatedSupabaseOrigin;
+  } catch {
+    return false;
+  }
+}
+
+const enabled = hasIsolatedVibeVoteSupabase();
 const originalEnvironment = { ...process.env };
 
 afterEach(() => {
   process.env = { ...originalEnvironment };
+});
+
+describe('isolated Supabase integration guard', () => {
+  it('runs the live suite only against the approved local VibeVote API origin', () => {
+    expect(
+      hasIsolatedVibeVoteSupabase({
+        SUPABASE_URL: 'http://127.0.0.1:55321/',
+        SUPABASE_SERVICE_ROLE_KEY: 'local-service-role-key',
+      }),
+    ).toBe(true);
+    expect(
+      hasIsolatedVibeVoteSupabase({
+        SUPABASE_URL: 'https://project.supabase.co',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+      }),
+    ).toBe(false);
+    expect(hasIsolatedVibeVoteSupabase({ SUPABASE_URL: isolatedSupabaseOrigin })).toBe(false);
+  });
 });
 
 describe.skipIf(!enabled)('durable session rate-limit integration', () => {
