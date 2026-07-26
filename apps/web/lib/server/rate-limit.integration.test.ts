@@ -5,6 +5,11 @@ import { checkSessionRateLimit, sessionRateLimitPolicies } from './rate-limit';
 
 const isolatedSupabaseOrigin = 'http://127.0.0.1:55321';
 
+function randomAddress() {
+  const hex = randomUUID().replaceAll('-', '');
+  return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}:${hex.slice(8, 12)}:${hex.slice(12, 16)}:${hex.slice(16, 20)}:${hex.slice(20, 24)}`;
+}
+
 function hasIsolatedVibeVoteSupabase(
   environment: Record<string, string | undefined> = process.env,
 ) {
@@ -43,15 +48,17 @@ describe('isolated Supabase integration guard', () => {
 
 describe.skipIf(!enabled)('durable session rate-limit integration', () => {
   it('atomically limits concurrent create attempts through the isolated Supabase stack', async () => {
-    const address = `test-${randomUUID()}`;
+    const address = randomAddress();
     const request = new Request('http://127.0.0.1:3000/api/v1/sessions', {
-      headers: { 'x-vercel-forwarded-for': address },
+      headers: { 'x-forwarded-for': address },
     });
     const environment: NodeJS.ProcessEnv = {
       ...process.env,
       NODE_ENV: 'production',
       VERCEL: '1',
       VERCEL_ENV: 'preview',
+      VERCEL_PROJECT_ID: 'prj_VibeVoteIntegration',
+      VIBEVOTE_RATE_LIMIT_KEY_SECRET: 'rate-limit-key-secret-for-integration-tests',
       VIBEVOTE_RATE_LIMIT_TIMEOUT_MS: '1000',
     };
     const results = await Promise.all(
@@ -67,12 +74,14 @@ describe.skipIf(!enabled)('durable session rate-limit integration', () => {
 
   it('returns 429 when the durable limit is exhausted, 503 when unavailable, then recovers', async () => {
     const origin = 'https://app.example.test';
-    const address = `route-${randomUUID()}`;
+    const address = randomAddress();
     const environment: NodeJS.ProcessEnv = {
       ...originalEnvironment,
       NODE_ENV: 'production',
       VERCEL: '1',
       VERCEL_ENV: 'preview',
+      VERCEL_PROJECT_ID: 'prj_VibeVoteIntegration',
+      VIBEVOTE_RATE_LIMIT_KEY_SECRET: 'rate-limit-key-secret-for-integration-tests',
       VIBEVOTE_APP_ORIGIN: origin,
       VIBEVOTE_RATE_LIMIT_TIMEOUT_MS: '1000',
     };
@@ -82,7 +91,7 @@ describe.skipIf(!enabled)('durable session rate-limit integration', () => {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-vercel-forwarded-for': clientAddress,
+          'x-forwarded-for': clientAddress,
         },
         body: JSON.stringify({
           title: `Rate limit ${randomUUID()}`,
@@ -102,11 +111,11 @@ describe.skipIf(!enabled)('durable session rate-limit integration', () => {
 
     process.env = { ...environment };
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const unavailable = await postSession(request(`unavailable-${randomUUID()}`));
+    const unavailable = await postSession(request(randomAddress()));
     expect(unavailable.status).toBe(503);
     expect(await unavailable.text()).not.toContain('SUPABASE');
 
     process.env = environment;
-    expect((await postSession(request(`restored-${randomUUID()}`))).status).toBe(200);
+    expect((await postSession(request(randomAddress()))).status).toBe(200);
   });
 });

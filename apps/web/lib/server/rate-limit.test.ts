@@ -4,12 +4,14 @@ import { checkSessionRateLimit, sessionRateLimitPolicies } from './rate-limit';
 const originalEnv = { ...process.env };
 const request = (address = '203.0.113.10') =>
   new Request('https://app.example.test/api/v1/sessions', {
-    headers: { 'x-vercel-forwarded-for': address },
+    headers: { 'x-forwarded-for': address },
   });
 const deployedEnvironment = {
   NODE_ENV: 'production',
   VERCEL: '1',
   VERCEL_ENV: 'preview',
+  VERCEL_PROJECT_ID: 'prj_VibeVoteReview',
+  VIBEVOTE_RATE_LIMIT_KEY_SECRET: 'rate-limit-key-secret-for-tests-only',
   SUPABASE_URL: 'https://project.example.test',
   SUPABASE_SERVICE_ROLE_KEY: 'server-secret',
 };
@@ -50,6 +52,21 @@ describe('durable session rate limiting', () => {
         environment: { ...deployedEnvironment, VIBEVOTE_RATE_LIMIT_TIMEOUT_MS: 'nope' },
       }),
     ).resolves.toBe('unavailable');
+    await expect(
+      checkSessionRateLimit(request(), 'create', {
+        environment: { ...deployedEnvironment, VERCEL_ENV: undefined },
+      }),
+    ).resolves.toBe('unavailable');
+    await expect(
+      checkSessionRateLimit(request(), 'create', {
+        environment: { ...deployedEnvironment, VERCEL_PROJECT_ID: undefined },
+      }),
+    ).resolves.toBe('unavailable');
+    await expect(
+      checkSessionRateLimit(request(), 'create', {
+        environment: { ...deployedEnvironment, VIBEVOTE_RATE_LIMIT_KEY_SECRET: 'short' },
+      }),
+    ).resolves.toBe('unavailable');
   });
 
   it('uses separate preview and production namespaces without storing the raw address', async () => {
@@ -66,20 +83,66 @@ describe('durable session rate limiting', () => {
         environment: { ...deployedEnvironment, VERCEL_ENV: 'production' },
       }),
     ).resolves.toBe('allowed');
+    await expect(
+      checkSessionRateLimit(request(), 'create', {
+        client: { rpc } as never,
+        environment: { ...deployedEnvironment, VERCEL_PROJECT_ID: 'prj_SeparateProject' },
+      }),
+    ).resolves.toBe('allowed');
+    await expect(
+      checkSessionRateLimit(request(), 'create', {
+        client: { rpc } as never,
+        environment: {
+          ...deployedEnvironment,
+          VIBEVOTE_RATE_LIMIT_KEY_SECRET: 'a-different-rate-limit-key-secret-for-tests',
+        },
+      }),
+    ).resolves.toBe('allowed');
     expect(rpc).toHaveBeenNthCalledWith(
       1,
       'check_session_rate_limit_v1',
       expect.objectContaining({
-        p_namespace: 'preview',
+        p_namespace: 'preview:prj_VibeVoteReview',
         p_limit: sessionRateLimitPolicies.create.limit,
       }),
     );
     expect(rpc).toHaveBeenNthCalledWith(
       2,
       'check_session_rate_limit_v1',
-      expect.objectContaining({ p_namespace: 'production' }),
+      expect.objectContaining({ p_namespace: 'production:prj_VibeVoteReview' }),
     );
+    expect(rpc).toHaveBeenNthCalledWith(
+      3,
+      'check_session_rate_limit_v1',
+      expect.objectContaining({ p_namespace: 'preview:prj_SeparateProject' }),
+    );
+    expect(rpc.mock.calls[0]![1].p_key_hash).not.toBe(rpc.mock.calls[3]![1].p_key_hash);
     expect(JSON.stringify(rpc.mock.calls)).not.toContain('203.0.113.10');
+  });
+
+  it('canonicalizes equivalent addresses and rejects malformed forwarding values', async () => {
+    const rpc = vi.fn().mockResolvedValue(rpcResult(true));
+    for (const address of [
+      '2001:0db8:0:0:0:0:0:1',
+      '2001:db8::1',
+      '::ffff:192.0.2.1',
+      '192.0.2.1',
+    ]) {
+      await expect(
+        checkSessionRateLimit(request(address), 'create', {
+          client: { rpc } as never,
+          environment: deployedEnvironment,
+        }),
+      ).resolves.toBe('allowed');
+    }
+    expect(rpc.mock.calls[0]![1].p_key_hash).toBe(rpc.mock.calls[1]![1].p_key_hash);
+    expect(rpc.mock.calls[2]![1].p_key_hash).toBe(rpc.mock.calls[3]![1].p_key_hash);
+    await expect(
+      checkSessionRateLimit(request('203.0.113.10, 198.51.100.1'), 'create', {
+        client: { rpc } as never,
+        environment: deployedEnvironment,
+      }),
+    ).resolves.toBe('unavailable');
   });
 
   it('maps allowed and denied atomic-provider results without leaking key material', async () => {

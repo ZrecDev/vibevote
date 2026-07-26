@@ -1,5 +1,6 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
+import { isIP } from 'node:net';
 import { createServiceRoleClient } from '@vibevote/server';
 import { z } from 'zod';
 
@@ -20,6 +21,11 @@ const rateLimitEnvironmentSchema = z.object({
   NODE_ENV: z.string().optional(),
   VERCEL: z.string().optional(),
   VERCEL_ENV: z.enum(['preview', 'production']).optional(),
+  VERCEL_PROJECT_ID: z
+    .string()
+    .regex(/^prj_[A-Za-z0-9]+$/)
+    .optional(),
+  VIBEVOTE_RATE_LIMIT_KEY_SECRET: z.string().min(32).max(512).optional(),
   VIBEVOTE_RATE_LIMIT_TIMEOUT_MS: z
     .string()
     .regex(/^\d+$/)
@@ -41,19 +47,40 @@ const rateLimitResponseSchema = z
 const defaultTimeoutMs = 1_000;
 
 function namespaceFor(environment: z.infer<typeof rateLimitEnvironmentSchema>) {
-  if (environment.NODE_ENV === 'test') return 'test';
-  if (environment.NODE_ENV === 'development') return 'development';
-  return environment.VERCEL_ENV === 'preview' ? 'preview' : 'production';
+  if (!environment.VERCEL && !environment.VERCEL_ENV && !environment.VERCEL_PROJECT_ID) {
+    if (environment.NODE_ENV === 'test') return 'test';
+    if (environment.NODE_ENV === 'development') return 'development';
+  }
+  if (
+    environment.VERCEL !== '1' ||
+    !environment.VERCEL_ENV ||
+    !environment.VERCEL_PROJECT_ID ||
+    !environment.VIBEVOTE_RATE_LIMIT_KEY_SECRET
+  )
+    return undefined;
+  return `${environment.VERCEL_ENV}:${environment.VERCEL_PROJECT_ID}`;
 }
 
 function clientAddress(request: Request) {
-  const value = request.headers.get('x-vercel-forwarded-for')?.trim();
-  return value && value.length <= 256 ? value : undefined;
+  const value = request.headers.get('x-forwarded-for')?.trim();
+  if (!value || value.length > 45 || !isIP(value)) return undefined;
+  if (isIP(value) === 4) return value;
+  const normalized = new URL(`http://[${value}]`).hostname.slice(1, -1);
+  const mapped = normalized.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (!mapped) return normalized;
+  const high = Number.parseInt(mapped[1]!, 16);
+  const low = Number.parseInt(mapped[2]!, 16);
+  return [high >> 8, high & 255, low >> 8, low & 255].join('.');
 }
 
-function hashedRateLimitKey(namespace: string, policy: SessionRateLimitPolicy, address: string) {
-  return createHash('sha256')
-    .update(`vibevote-session-rate-limit:${namespace}:${policy}:${address}`)
+function hashedRateLimitKey(
+  namespace: string,
+  policy: SessionRateLimitPolicy,
+  address: string,
+  secret: string,
+) {
+  return createHmac('sha256', secret)
+    .update(JSON.stringify(['vibevote-session-rate-limit-v1', namespace, policy, address]))
     .digest('hex');
 }
 
@@ -92,7 +119,7 @@ export async function checkSessionRateLimit(
 
   const namespace = namespaceFor(parsedEnvironment.data);
   if (namespace === 'development' || namespace === 'test') return 'allowed';
-  if (parsedEnvironment.data.VERCEL !== '1') return 'unavailable';
+  if (!namespace) return 'unavailable';
 
   const address = clientAddress(request);
   if (!address) return 'unavailable';
@@ -103,7 +130,12 @@ export async function checkSessionRateLimit(
     const response = await withTimeout<{ data: unknown; error: unknown }>(
       configuredClient.rpc('check_session_rate_limit_v1', {
         p_namespace: namespace,
-        p_key_hash: hashedRateLimitKey(namespace, policy, address),
+        p_key_hash: hashedRateLimitKey(
+          namespace,
+          policy,
+          address,
+          parsedEnvironment.data.VIBEVOTE_RATE_LIMIT_KEY_SECRET!,
+        ),
         p_limit: policyConfig.limit,
         p_window_seconds: policyConfig.windowSeconds,
       }) as unknown as Promise<{ data: unknown; error: unknown }>,
