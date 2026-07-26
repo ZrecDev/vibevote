@@ -106,4 +106,17 @@ describe('GET /api/v1/sessions/[sessionId]', () => {
     expect(limited.status).toBe(503);
     expect(limited.headers.get('access-control-allow-origin')).toBeNull();
   });
+
+  it('fails closed with the default limiter when deployed provider configuration is absent', async () => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: 'production',
+      VIBEVOTE_APP_ORIGIN: 'https://app.example.test',
+    };
+    const bootstrap = vi.fn();
+    const response = await getSession(request(), params(), { bootstrap });
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('SUPABASE');
+    expect(bootstrap).not.toHaveBeenCalled();
+  });
 });

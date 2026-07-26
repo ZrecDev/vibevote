@@ -91,4 +91,16 @@ describe('POST /api/v1/sessions/join', () => {
     });
     expect(unavailable.status).toBe(503);
   });
+
+  it('fails closed with the default limiter when deployed provider configuration is absent', async () => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: 'production',
+      VIBEVOTE_APP_ORIGIN: 'https://app.example.test',
+    };
+    const response = await postJoinSession(request(JSON.stringify(input)));
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('SUPABASE');
+    expect(joinSession).not.toHaveBeenCalled();
+  });
 });
