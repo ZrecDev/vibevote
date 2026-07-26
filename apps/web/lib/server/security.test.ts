@@ -44,12 +44,13 @@ describe('trustedOrigin', () => {
 
 describe('session rate limiting', () => {
   it('is explicitly permissive only outside production', async () => {
+    const request = new Request('http://127.0.0.1:3000/api/v1/sessions');
     process.env = { ...process.env, NODE_ENV: 'test' };
-    await expect(checkSessionRateLimit()).resolves.toBe('allowed');
+    await expect(checkSessionRateLimit(request, 'create')).resolves.toBe('allowed');
     process.env = { ...process.env, NODE_ENV: 'development' };
-    await expect(checkSessionRateLimit()).resolves.toBe('allowed');
+    await expect(checkSessionRateLimit(request, 'create')).resolves.toBe('allowed');
     process.env = { ...process.env, NODE_ENV: 'production' };
-    await expect(checkSessionRateLimit()).resolves.toBe('unavailable');
+    await expect(checkSessionRateLimit(request, 'create')).resolves.toBe('unavailable');
   });
 });
 

@@ -29,7 +29,7 @@ export async function getSession(
       trust.error === 'rejected' ? 'Request origin is not allowed.' : 'Service is unavailable.',
       trust.error === 'rejected' ? 403 : 503,
     );
-  const limited = await rateLimit();
+  const limited = await rateLimit(request, 'bootstrap');
   if (limited !== 'allowed')
     return safeError(
       limited === 'denied' ? 'RATE_LIMITED' : 'INTERNAL_ERROR',

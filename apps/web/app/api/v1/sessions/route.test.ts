@@ -124,4 +124,16 @@ describe('POST /api/v1/sessions', () => {
     expect(failed.status).toBe(500);
     expect(await failed.text()).not.toContain('database password leaked');
   });
+
+  it('fails closed with the default limiter when deployed provider configuration is absent', async () => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: 'production',
+      VIBEVOTE_APP_ORIGIN: 'https://app.example.test',
+    };
+    const response = await postSession(request(JSON.stringify(input)));
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain('SUPABASE');
+    expect(createSession).not.toHaveBeenCalled();
+  });
 });

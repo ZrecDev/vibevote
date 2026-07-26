@@ -178,6 +178,19 @@ export type Database = {
         Args: { target_session_id: string };
         Returns: undefined;
       };
+      check_session_rate_limit_v1: {
+        Args: {
+          p_key_hash: string;
+          p_limit: number;
+          p_namespace: string;
+          p_window_seconds: number;
+        };
+        Returns: {
+          allowed: boolean;
+          remaining: number;
+          reset_at: string;
+        }[];
+      };
       create_decision_session_v1: {
         Args: {
           p_category: string;

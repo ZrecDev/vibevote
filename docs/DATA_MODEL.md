@@ -47,3 +47,7 @@ Non-null participant hashes are protected by a partial unique index, while legac
 ## HTTP credential lifecycle
 
 The HTTP create adapter builds the one-time invitation URL only from trusted `VIBEVOTE_APP_ORIGIN`. Create and join place their server-internal raw participant token in the scoped `vibevote_participant_v1` HttpOnly session cookie and return only safe public room responses. `GET /api/v1/sessions/{sessionId}` authenticates with that cookie and returns either safe host or guest bootstrap state. Frontend session bootstrap integration, authenticated follow-up adapters, realtime, ballots, voting, and results remain future work.
+
+## Durable session rate limiting
+
+Migrations `20260725235152_add_session_rate_limit_v1.sql` and `20260725235855_fix_session_rate_limit_v1_function.sql` add `private.session_rate_limit_windows` and the service-role-only `check_session_rate_limit_v1` RPC. The private table stores only a SHA-256-derived key, deployment namespace, fixed-window start time, and count; it never stores raw client addresses, credentials, invitations, or session data. The RPC uses database time and an atomic upsert so concurrent attempts cannot exceed a configured policy. Preview and production namespaces are distinct. A bounded cleanup removes stale windows without a separate scheduler.
