@@ -1,12 +1,10 @@
 import { AppShell } from '@/components/app-shell';
-import { PrivateBallot, VotingProgress } from '@/features/room/mock-room-components';
-export default function Page() {
+import { RoomBootstrap } from '@/features/room/room-bootstrap';
+export default async function Page({ params }: { params: Promise<{ sessionId: string }> }) {
+  const { sessionId } = await params;
   return (
     <AppShell>
-      <PrivateBallot />
-      <div style={{ marginTop: '1rem' }}>
-        <VotingProgress />
-      </div>
+      <RoomBootstrap sessionId={sessionId} />
     </AppShell>
   );
 }

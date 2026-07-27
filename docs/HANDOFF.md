@@ -2,7 +2,7 @@
 
 ## Merged baseline
 
-PR #7 (session API integration and authenticated bootstrap), PR #8 (durable public-session rate limiting), PR #9 (client-safe collaboration contracts), PR #10 (invitation/readiness operations), PR #11 (expiry timestamp normalization), and PR #12 (trusted public invitation origin) are merged into `main`. The production room entry remains `room page -> RoomBootstrap -> typed session client -> LobbyScreen({ room, isHost })`; the production room entry path has no import of `mockRoom` or mock-result modules.
+PR #7 (session API integration and authenticated bootstrap), PR #8 (durable public-session rate limiting), PR #9 (client-safe collaboration contracts), PR #10 (invitation/readiness operations), PR #11 (expiry timestamp normalization), PR #12 (trusted public invitation origin), PR #13 (invitation/readiness UI), PR #14 (start-voting UI), PR #15 (private ballots and result finalization), and PR #16 (safe finalized-result projection) are merged into `main`. The production room entry remains `room page -> RoomBootstrap -> typed session client -> LobbyScreen({ room, isHost })`; production room code has no import path to `mockRoom` or mock-result modules.
 
 ## Merged Platform batch
 
@@ -15,21 +15,21 @@ Policy enforced by the migration: one active invitation at a time; a replacement
 
 ## Current Experience batch
 
-Branch: `experience/invitation-readiness-ui-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-27\vibevote-experience-invitation-readiness`
+Branch: `experience/voting-results-ui-v1`
+Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-27\vibevote-experience-voting-results`
 
-The host lobby can create a replacement share link and copy it without persisting credentials or invitation data. Each authenticated participant can toggle only their own readiness; the UI sends only a readiness value and updates only the returned participant row. The server remains the authority for invitation lifecycle and state transitions. Voting start remains intentionally disabled in this Experience batch.
+The authenticated room now presents a complete private ballot during `VOTING`, sends the typed same-origin ballot request, and shows aggregate progress only. The host can finalize through the server-only authority; the locked winner is then available to both host and guests through authenticated bootstrap after refresh. The historical `/room/[sessionId]/result` route now uses the same `RoomBootstrap`, not a mock result screen. Browser state still never receives participant credentials, raw ballots, token hashes, or private result-selection data.
 
 ## Verification
 
-Completed locally: fresh `supabase db reset --local --no-seed` replayed all migrations; the focused SQL authorization fixture passed through `psql` (the bundled `supabase test db` runner cannot execute this assertion-style, transaction-only fixture because it requires TAP output); `pnpm format:check`; `pnpm lint`; `pnpm typecheck`; `pnpm test` (25 files: 130 tests passed, 3 skipped); `pnpm build`; `pnpm test:e2e` (2 passed, including the isolated two-browser host/guest flow that creates a replacement share link, joins it, and changes each participant's own readiness); `git diff --check`; and the focused source-path scan of the production room entry, `RoomBootstrap`, and typed session client (no mock imports).
+Completed before this batch: fresh `supabase db reset --local` replayed all migrations; the focused SQL authorization fixtures passed through `psql` (the bundled `supabase test db` runner cannot execute these assertion-style, transaction-only fixtures because it requires TAP output). Final Experience verification passed: `pnpm format:check`; `pnpm lint`; `pnpm typecheck`; `pnpm test` (25 files passed, 1 skipped; 133 tests passed, 3 skipped); `pnpm build`; and `pnpm test:e2e` (2/2 passed, including isolated two-browser private ballots, aggregate-only progress, server finalization, and the same result after host/guest refresh). `git diff --check` and the focused production-room mock-boundary scan both passed.
 
 The migration serializes invitation replacement, readiness, and start decisions by locking the session row. The focused SQL fixture covers unauthorized invitation/revocation, expired/revoked and late joins, invalid session states, self-only readiness, privileges, and atomic start behavior.
 
 ## Deployment/configuration caveats
 
-Existing production/preview public APIs still fail closed unless their server-only Supabase and durable rate-limit configuration is present. This batch also requires the existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server; neither may be made public. Apply migrations and complete local reset/RLS proof before a deployment.
+Existing production/preview public APIs still fail closed unless their server-only Supabase and durable rate-limit configuration is present. This batch also requires the existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server; neither may be made public. Local live E2E requires the isolated Supabase stack on ports `55320-55329`, plus `VIBEVOTE_APP_ORIGIN=http://127.0.0.1:3000`; it must not use production credentials. Apply migrations and complete local reset/RLS proof before deployment.
 
 ## Next dependency
 
-Open the Experience UI batch as a draft PR after a final clean status review. The next dependency is a separate approved batch for the enabled host start-voting interaction and refreshed shared lobby state; private ballots, realtime, result selection, and PWA remain out of scope.
+Open this Experience voting/results batch as a draft PR after full validation. The next dependency is realtime room synchronization: participants need safe state refresh for lobby readiness, voting progress, and finalized result without polling; its event payloads must remain aggregate-only and must not include ballots, credentials, hashes, or participant-specific completion data. PWA/offline support follows that realtime boundary.
