@@ -33,8 +33,16 @@ export async function replaceInvitation(
     if (error) throw error;
     const inviteUrl = new URL(invitationBaseUrl);
     inviteUrl.searchParams.set('invite', token);
+    const invitation = data as { expiresAt?: unknown } & object;
     return createInvitationResponseSchema.parse({
-      invitation: { ...(data as object), inviteUrl: inviteUrl.toString() },
+      invitation: {
+        ...invitation,
+        inviteUrl: inviteUrl.toString(),
+        expiresAt:
+          typeof invitation.expiresAt === 'string'
+            ? new Date(invitation.expiresAt).toISOString()
+            : invitation.expiresAt,
+      },
     });
   } catch (error) {
     throw mapOperationError(error);

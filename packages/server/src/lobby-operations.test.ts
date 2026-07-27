@@ -19,7 +19,7 @@ describe('lobby operations', () => {
           data: {
             id: '550e8400-e29b-41d4-a716-446655440020',
             sessionId,
-            expiresAt: '2026-07-28T00:00:00.000Z',
+            expiresAt: '2026-07-28T00:00:00+00:00',
             status: 'ACTIVE',
           },
           error: null,
@@ -27,6 +27,7 @@ describe('lobby operations', () => {
       }),
     });
     expect(result.invitation.inviteUrl).toMatch(/^https:\/\/app\.example\.test\/join\?invite=/);
+    expect(result.invitation.expiresAt).toBe('2026-07-28T00:00:00.000Z');
     expect(JSON.stringify(result)).not.toMatch(/token_hash|participant-token/);
   });
 
