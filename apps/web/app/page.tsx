@@ -20,8 +20,8 @@ export default function HomePage() {
           <Link href="/create">
             <Button>Start a decision</Button>
           </Link>
-          <Link href="/room/550e8400-e29b-41d4-a716-446655440000">
-            <Button variant="secondary">View a room</Button>
+          <Link href="/join">
+            <Button variant="secondary">Join a room</Button>
           </Link>
         </div>
       </section>
