@@ -19,6 +19,12 @@ import { ParticipantList } from './room-components';
 
 type LobbyRoom = HostRoomState | ParticipantRoomState;
 
+const modeLabel = {
+  INSTANT_MATCH: 'Instant Match',
+  BEST_FIT: 'Best Fit',
+  CHAOS: 'Chaos',
+} as const;
+
 export function LobbyScreen({
   room,
   isHost,
@@ -36,6 +42,7 @@ export function LobbyScreen({
   const [votes, setVotes] = useState<Record<string, 'LOVE' | 'FINE' | 'PASS' | 'VETO'>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(room.result);
+  const vetoCount = Object.values(votes).filter((value) => value === 'VETO').length;
   const currentParticipant = participants.find(
     (participant) => participant.id === room.currentParticipantId,
   );
@@ -143,7 +150,7 @@ export function LobbyScreen({
         <h1 className="room-title">{room.session.title}</h1>
         <p className="lede">Find the choice the group can genuinely get behind.</p>
         <div className="room-meta">
-          <span>Best Fit</span>
+          <span>{modeLabel[room.session.mode]}</span>
           <span>{room.session.options.length} options</span>
           <span>{room.participants.length} people</span>
         </div>
@@ -217,18 +224,31 @@ export function LobbyScreen({
         <Card>
           <p className="eyebrow">Private ballot</p>
           <h2>Your preferences stay private.</h2>
+          <p className="muted">
+            {room.session.mode === 'INSTANT_MATCH'
+              ? 'A match needs every person to mark it Love or Fine.'
+              : room.session.mode === 'CHAOS'
+                ? 'Chaos picks fairly from the eligible options the group accepts.'
+                : 'Best Fit balances the group’s aggregate preferences.'}{' '}
+            You have one veto.
+          </p>
           {room.session.options.map((option) => (
             <div className="option-line" key={`vote-${option.id}`}>
               <strong>{option.label}</strong>
               <select
                 aria-label={`${option.label} vote`}
                 value={votes[option.id] ?? 'PASS'}
-                onChange={(event) =>
-                  setVotes((current) => ({
-                    ...current,
-                    [option.id]: event.target.value as 'LOVE' | 'FINE' | 'PASS' | 'VETO',
-                  }))
-                }
+                onChange={(event) => {
+                  const value = event.target.value as 'LOVE' | 'FINE' | 'PASS' | 'VETO';
+                  if (value === 'VETO' && votes[option.id] !== 'VETO' && vetoCount >= 1) {
+                    setMessage(
+                      'You can use one veto. Change your current veto before choosing another.',
+                    );
+                    return;
+                  }
+                  setMessage(undefined);
+                  setVotes((current) => ({ ...current, [option.id]: value }));
+                }}
               >
                 <option value="LOVE">Love</option>
                 <option value="FINE">Fine</option>
