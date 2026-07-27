@@ -35,10 +35,20 @@ test('host and guest bootstrap independently through browser-managed cookies', a
   const createPayload = await (await createResponse).json();
   expect(createPayload).toMatchObject({ ok: true });
   expect(createPayload).not.toHaveProperty('participantAccessToken');
-  const inviteUrl = createPayload.data.invitation.inviteUrl as string;
   const hostSessionId = createPayload.data.session.session.id as string;
   await expect(host).toHaveURL(new RegExp(`/room/${hostSessionId}$`));
   await expect(host.getByRole('button', { name: /start voting/i })).toBeVisible();
+
+  const invitationResponse = host.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/v1/sessions/${hostSessionId}/invitation`) &&
+      response.request().method() === 'POST',
+  );
+  await host.getByRole('button', { name: /create share link/i }).click();
+  const invitationPayload = await (await invitationResponse).json();
+  expect(invitationPayload).toMatchObject({ ok: true });
+  const inviteUrl = invitationPayload.data.invitation.inviteUrl as string;
+  await expect(host.getByLabel('Active invitation')).toHaveValue(inviteUrl);
 
   await guest.goto(inviteUrl);
   await guest.getByLabel('Your name').fill('Guest Sam');
@@ -55,6 +65,11 @@ test('host and guest bootstrap independently through browser-managed cookies', a
   await expect(guest.getByRole('heading', { name: 'Friday dinner' })).toBeVisible();
   await expect(guest.getByRole('button', { name: /start voting/i })).toHaveCount(0);
 
+  await guest.getByRole('button', { name: /i am ready/i }).click();
+  await expect(guest.getByRole('button', { name: /i need more time/i })).toBeVisible();
+  await host.getByRole('button', { name: /i am ready/i }).click();
+  await expect(host.getByRole('button', { name: /i need more time/i })).toBeVisible();
+
   await host.reload();
   await guest.reload();
   await expect(host.getByRole('button', { name: /start voting/i })).toBeVisible();
@@ -70,7 +85,7 @@ test('host and guest bootstrap independently through browser-managed cookies', a
     expect(new URL(page.url()).search).toBe('');
     expect(new URL(page.url()).hash).toBe('');
   }
-  expect(apiRequests).toHaveLength(6);
+  expect(apiRequests).toHaveLength(9);
   await hostContext.close();
   await guestContext.close();
 });

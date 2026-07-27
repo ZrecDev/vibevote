@@ -4,15 +4,21 @@ import {
   apiErrorSchema,
   apiSuccessSchema,
   bootstrapSessionResponseSchema,
+  createInvitationResponseSchema,
   createSessionRequestSchema,
   createSessionResponseSchema,
   joinSessionRequestSchema,
   joinSessionResponseSchema,
+  updateReadinessRequestSchema,
+  updateReadinessResponseSchema,
   type BootstrapSessionResponse,
   type CreateSessionRequest,
   type CreateSessionResponse,
   type JoinSessionRequest,
   type JoinSessionResponse,
+  type CreateInvitationResponse,
+  type ParticipantReadiness,
+  type UpdateReadinessResponse,
 } from '@vibevote/contracts';
 import type { z } from 'zod';
 
@@ -83,5 +89,31 @@ export function bootstrapSession(sessionId: string): Promise<BootstrapSessionRes
     `/api/v1/sessions/${encodeURIComponent(sessionId)}`,
     bootstrapSessionResponseSchema,
     { method: 'GET' },
+  );
+}
+
+/** Host-only. The raw share URL is returned only for this immediate UI action. */
+export function createInvitation(sessionId: string): Promise<CreateInvitationResponse> {
+  return request(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/invitation`,
+    createInvitationResponseSchema,
+    { method: 'POST' },
+  );
+}
+
+/** Updates the authenticated current participant only; no participant identifier is sent. */
+export function updateCurrentReadiness(
+  sessionId: string,
+  readiness: ParticipantReadiness,
+): Promise<UpdateReadinessResponse> {
+  const payload = updateReadinessRequestSchema.parse({ readiness });
+  return request(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/readiness`,
+    updateReadinessResponseSchema,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
   );
 }

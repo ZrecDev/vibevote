@@ -1,8 +1,76 @@
-import type { PublicRoomState } from '@vibevote/contracts';
+'use client';
+
+import { useState } from 'react';
+import type {
+  HostRoomState,
+  ParticipantReadiness,
+  ParticipantRoomState,
+} from '@vibevote/contracts';
 import { Button, Card } from '@/components/ui';
+import {
+  createInvitation,
+  SessionClientError,
+  updateCurrentReadiness,
+} from '@/features/session/session-client';
 import { ParticipantList } from './room-components';
 
-export function LobbyScreen({ room, isHost }: { room: PublicRoomState; isHost: boolean }) {
+type LobbyRoom = HostRoomState | ParticipantRoomState;
+
+export function LobbyScreen({ room, isHost }: { room: LobbyRoom; isHost: boolean }) {
+  const [participants, setParticipants] = useState(room.participants);
+  const [inviteUrl, setInviteUrl] = useState<string>();
+  const [pending, setPending] = useState<'invite' | 'readiness' | undefined>();
+  const [message, setMessage] = useState<string>();
+  const currentParticipant = participants.find(
+    (participant) => participant.id === room.currentParticipantId,
+  );
+
+  async function changeReadiness(readiness: ParticipantReadiness) {
+    setPending('readiness');
+    setMessage(undefined);
+    try {
+      const response = await updateCurrentReadiness(room.session.id, readiness);
+      setParticipants((current) =>
+        current.map((participant) =>
+          participant.id === response.participant.id ? response.participant : participant,
+        ),
+      );
+    } catch (reason) {
+      setMessage(
+        reason instanceof SessionClientError ? reason.message : 'We could not update readiness.',
+      );
+    } finally {
+      setPending(undefined);
+    }
+  }
+
+  async function shareInvitation() {
+    setPending('invite');
+    setMessage(undefined);
+    try {
+      const response = await createInvitation(room.session.id);
+      setInviteUrl(response.invitation.inviteUrl);
+    } catch (reason) {
+      setMessage(
+        reason instanceof SessionClientError
+          ? reason.message
+          : 'We could not create an invitation.',
+      );
+    } finally {
+      setPending(undefined);
+    }
+  }
+
+  async function copyInvitation() {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setMessage('Invitation link copied.');
+    } catch {
+      setMessage('Copy the invitation link from the field below.');
+    }
+  }
+
   return (
     <div className="stack">
       <section className="hero-card card">
@@ -25,9 +93,47 @@ export function LobbyScreen({ room, isHost }: { room: PublicRoomState; isHost: b
             </div>
             <span className="status-pill">{room.participants.length}</span>
           </div>
-          <ParticipantList participants={room.participants} />
+          <ParticipantList participants={participants} />
+          {currentParticipant && room.session.status === 'LOBBY' && (
+            <div className="row">
+              <Button
+                disabled={pending === 'readiness'}
+                onClick={() =>
+                  void changeReadiness(
+                    currentParticipant.readiness === 'READY' ? 'WAITING' : 'READY',
+                  )
+                }
+              >
+                {currentParticipant.readiness === 'READY' ? 'I need more time' : 'I am ready'}
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
+      {isHost && room.session.status === 'LOBBY' && (
+        <Card>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Invite the group</p>
+              <h2>Share one active invitation.</h2>
+            </div>
+            <Button disabled={pending === 'invite'} onClick={() => void shareInvitation()}>
+              {pending === 'invite' ? 'Creating invite…' : 'Create share link'}
+            </Button>
+          </div>
+          {inviteUrl && (
+            <div className="stack">
+              <label htmlFor="active-invitation">Active invitation</label>
+              <input id="active-invitation" className="input" value={inviteUrl} readOnly />
+              <div className="row">
+                <Button variant="secondary" onClick={() => void copyInvitation()}>
+                  Copy invitation link
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
       <Card>
         <div className="section-heading">
           <div>
@@ -42,6 +148,7 @@ export function LobbyScreen({ room, isHost }: { room: PublicRoomState; isHost: b
           </div>
         ))}
       </Card>
+      {message && <p role="status">{message}</p>}
       <div className="row">{isHost && <Button disabled>Start voting (coming soon)</Button>}</div>
     </div>
   );
