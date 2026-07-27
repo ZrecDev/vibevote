@@ -32,4 +32,4 @@ Existing production/preview public APIs still fail closed unless their server-on
 
 ## Next dependency
 
-Open this Experience voting/results batch as a draft PR after full validation. The next dependency is realtime room synchronization: participants need safe state refresh for lobby readiness, voting progress, and finalized result without polling; its event payloads must remain aggregate-only and must not include ballots, credentials, hashes, or participant-specific completion data. PWA/offline support follows that realtime boundary.
+PR #17 is merged. The active recovery batch adds automatic authenticated bootstrap refresh on reconnect, visibility, and a visible-tab interval; it preserves the last safe room state if a background refresh fails. It sends and receives only the existing safe room contract. The next dependency is push-based realtime synchronization with the same aggregate-only boundary, followed by PWA/offline support.
