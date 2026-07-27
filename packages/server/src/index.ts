@@ -3,6 +3,12 @@ export { generateToken, hashToken } from './tokens';
 export { createSession } from './create-session';
 export { joinSession } from './join-session';
 export { bootstrapSession } from './bootstrap-session';
+export {
+  replaceInvitation,
+  revokeInvitation,
+  updateReadiness,
+  startLobbyVoting,
+} from './lobby-operations';
 export { mapOperationError, SafeOperationError } from './errors';
 export {
   projectHostRoom,

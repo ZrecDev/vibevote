@@ -39,6 +39,8 @@ export function mapOperationError(error: unknown): SafeOperationError {
   const code =
     typeof error === 'object' && error !== null ? (error as PostgrestError).code : undefined;
   if (code === '22023') return new SafeOperationError('INVALID_INVITE');
+  if (code === '42501') return new SafeOperationError('UNAUTHORIZED');
+  if (code === '55000') return new SafeOperationError('INVALID_SESSION_STATUS');
   if (code === '23514') return new SafeOperationError('INVALID_REQUEST');
   if (code === '23505') return new SafeOperationError('CONFLICT');
   return new SafeOperationError('INTERNAL_ERROR');
