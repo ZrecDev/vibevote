@@ -1,7 +1,14 @@
 import { fixtures } from '@vibevote/contracts';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { bootstrapSession, createSession, joinSession, SessionClientError } from './session-client';
+import {
+  bootstrapSession,
+  createInvitation,
+  createSession,
+  joinSession,
+  SessionClientError,
+  updateCurrentReadiness,
+} from './session-client';
 
 const host = {
   kind: 'HOST' as const,
@@ -89,6 +96,42 @@ describe('session client', () => {
     );
     expect(fetchMock.mock.calls.at(-1)![1]).not.toHaveProperty('body');
     expect(fetchMock.mock.calls.at(-1)![1]).not.toHaveProperty('headers');
+  });
+
+  it('uses typed host-only invitation and self-readiness endpoints without credentials', async () => {
+    const invitation = {
+      id: '550e8400-e29b-41d4-a716-446655440020',
+      sessionId: host.session.session.id,
+      inviteUrl: 'http://localhost:3000/join?invite=safe',
+      expiresAt: '2026-07-28T00:00:00.000Z',
+      status: 'ACTIVE',
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(respond({ ok: true, data: { invitation } }))
+      .mockResolvedValueOnce(
+        respond({
+          ok: true,
+          data: { participant: { ...host.session.participants[0], readiness: 'READY' } },
+        }),
+      );
+    await expect(createInvitation(host.session.session.id)).resolves.toEqual({ invitation });
+    await expect(updateCurrentReadiness(host.session.session.id, 'READY')).resolves.toMatchObject({
+      participant: { readiness: 'READY' },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      `/api/v1/sessions/${host.session.session.id}/invitation`,
+      expect.objectContaining({ method: 'POST', credentials: 'same-origin' }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `/api/v1/sessions/${host.session.session.id}/readiness`,
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ readiness: 'READY' }) }),
+    );
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(
+      /participantAccessToken|Authorization/,
+    );
   });
 
   it.each([400, 401, 403, 429, 503])(
