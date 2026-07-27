@@ -3,11 +3,15 @@ import {
   apiErrorSchema,
   apiErrorCodeSchema,
   bootstrapSessionResponseSchema,
+  createInvitationResponseSchema,
   createSessionRequestSchema,
+  finalResultResponseSchema,
   fixtures,
   joinSessionRequestSchema,
   publicRoomStateSchema,
   sessionStatusSchema,
+  submitPrivateBallotRequestSchema,
+  updateReadinessRequestSchema,
 } from '.';
 
 const options = [{ label: 'North Star Cafe' }, { label: 'Green Bowl' }];
@@ -153,6 +157,58 @@ describe('v1 session contracts', () => {
     expect(
       joinSessionRequestSchema.safeParse({ inviteToken: 'invite-token', displayName: '   ' })
         .success,
+    ).toBe(false);
+  });
+
+  it('keeps invitation sharing responses safe and host-scoped', () => {
+    const invitation = {
+      id: '550e8400-e29b-41d4-a716-446655440020',
+      sessionId: fixtures.lobbyRoom.session.id,
+      inviteUrl: 'https://app.example.test/join?invite=raw-share-token',
+      expiresAt: null,
+      status: 'ACTIVE',
+    };
+    expect(createInvitationResponseSchema.safeParse({ invitation }).success).toBe(true);
+    expect(
+      createInvitationResponseSchema.safeParse({
+        invitation: { ...invitation, invitationTokenHash: 'a'.repeat(64) },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts a participant readiness update and rejects extra capability claims', () => {
+    expect(updateReadinessRequestSchema.safeParse({ readiness: 'READY' }).success).toBe(true);
+    expect(
+      updateReadinessRequestSchema.safeParse({ readiness: 'READY', canStartVoting: true }).success,
+    ).toBe(false);
+  });
+
+  it('accepts complete unique private ballot entries without making them public state', () => {
+    const ballots = fixtures.lobbyRoom.session.options.map((option, index) => ({
+      optionId: option.id,
+      value: index === 0 ? 'LOVE' : 'FINE',
+    }));
+    expect(submitPrivateBallotRequestSchema.safeParse({ ballots }).success).toBe(true);
+    expect(
+      submitPrivateBallotRequestSchema.safeParse({ ballots: [...ballots, ballots[0]] }).success,
+    ).toBe(false);
+    expect(publicRoomStateSchema.safeParse({ ...fixtures.votingRoom, ballots }).success).toBe(
+      false,
+    );
+  });
+
+  it('accepts a safe immutable result receipt and rejects private decision material', () => {
+    const result = {
+      id: '550e8400-e29b-41d4-a716-446655440021',
+      sessionId: fixtures.decidedRoom.session.id,
+      winnerOptionId: fixtures.decidedRoom.session.options[0]!.id,
+      method: 'BEST_FIT',
+      explanation: 'North Star Cafe is the group result.',
+      finalizedAt: '2026-07-24T18:00:00.000Z',
+    };
+    expect(finalResultResponseSchema.safeParse({ result }).success).toBe(true);
+    expect(
+      finalResultResponseSchema.safeParse({ result: { ...result, randomSeed: 'secret' } }).success,
     ).toBe(false);
   });
 

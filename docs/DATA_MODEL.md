@@ -28,6 +28,12 @@ Participants have an ID, temporary display name, role (`HOST` or `GUEST`), and r
 - Invitation expiry is nullable in the client-safe response pending product policy for default lifetime.
 - The invite response may expose a shareable URL/token representation to its intended host client, but never its stored hash.
 
+## Contract-only collaboration workflow vocabulary
+
+The shared collaboration contract defines client-safe shapes for a host-created share invitation, a participant readiness update, a complete private ballot submission, aggregate-only voting progress, and a final result receipt. An invitation sharing response may expose its raw URL to the host but never a token hash. A ballot request is participant-to-server input only and contains one value per option; it is never part of room state, a result receipt, fixtures intended for public state, or realtime payloads. Progress contains only total and finished participant counts, never identities attached to completion. The result receipt is client-safe and readable; the server and database, not the contract, enforce its immutability.
+
+Invitation expiration defaults, revocation behavior, transition authority, readiness quorum, late-join policy, ballot replacement semantics, and the decision algorithm remain intentionally unresolved product/server policy. Platform and Experience work must not begin until these schemas receive shared review.
+
 ## Session persistence foundation
 
 Migration `20260724172000_create_session_persistence_foundation.sql` adds `decision_sessions`, `decision_options`, `session_participants`, and `session_invitations`. It uses the contract vocabulary for category, mode, status, role, and readiness. Options have a per-session unique stable position; a server create transaction must call `assert_session_option_count` to enforce the 2-12 total before a room is usable. SQL enforces field domains, foreign keys, cascading session deletion, one host per session, and non-empty credential hashes. Descriptions and hard constraints remain deliberately omitted. Invitation expiry is nullable and has no default lifetime.
