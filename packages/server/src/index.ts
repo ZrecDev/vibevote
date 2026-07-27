@@ -7,6 +7,7 @@ export {
   replaceInvitation,
   revokeInvitation,
   updateReadiness,
+  updateOptionEligibility,
   startLobbyVoting,
 } from './lobby-operations';
 export { submitPrivateBallot, finalizeDecision } from './voting-operations';
