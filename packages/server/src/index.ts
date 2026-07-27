@@ -9,6 +9,7 @@ export {
   updateReadiness,
   startLobbyVoting,
 } from './lobby-operations';
+export { submitPrivateBallot, finalizeDecision } from './voting-operations';
 export { mapOperationError, SafeOperationError } from './errors';
 export {
   projectHostRoom,
