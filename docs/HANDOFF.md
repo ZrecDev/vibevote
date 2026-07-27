@@ -1,60 +1,28 @@
 # Current Project Handoff
 
-## Current milestone
+## Merged baseline
 
-Foundation — first polished mock-only mobile room experience.
+PR #7 (session API integration and authenticated bootstrap), PR #8 (durable public-session rate limiting), and PR #9 (client-safe collaboration contracts) are merged into `main`. The production room entry remains `room page -> RoomBootstrap -> typed session client -> LobbyScreen({ room, isHost })`; the production room entry path has no import of `mockRoom` or mock-result modules.
 
-## Experience Lead
+## Current Platform batch
 
-Branch: `experience/session-api-integration-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-24\vibevote-experience-session-api`
+Branch: `platform/invitations-readiness-v1`
+Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-27\vibevote-platform-invitations-readiness`
 
-Current task: Public session API integration.
+This additive batch adds service-role-only server operations and HTTP routes for host-only invitation replacement/revocation, self-only lobby readiness updates, and a guarded `LOBBY -> VOTING` transition. Invitation tokens and participant credentials are generated and hashed server-side; hashes and credentials are excluded from returned JSON, logs, room projections, and the browser cookie remains HttpOnly.
 
-Completed: Added the typed public client adapter at `apps/web/features/session/session-client.ts`. Create validates and submits the public create contract with field-associated errors and two-to-twelve deterministic options; join safely reads `?invite=` and submits the public join contract; and the room route bootstraps authenticated host or guest state through the HttpOnly cookie. Retry makes a fresh request and route changes cannot retain stale HOST controls. Production create, join, and bootstrap routes no longer use the mock room as their source of truth.
+Policy enforced by the migration: one active invitation at a time; a replacement revokes the predecessor under a session-row lock; invitations expire after 24 hours; invitation creation/revocation and joining are allowed only in `DRAFT` or `LOBBY`; readiness changes are allowed only in `LOBBY`; and start requires the host, at least two current participants, and every participant `READY`. Private ballots, voting progress, result selection, realtime, and PWA work are untouched.
 
-Still needed: invitation sharing from a later safe host response, readiness, voting, realtime, decision calculation, and results.
+## Verification
 
-Files touched: create, join, and room routes; session adapter and adapter tests; create, join, and room-bootstrap tests; the two-context browser-flow test; room screen; and this Experience handoff section.
+Completed locally: fresh `supabase db reset --local --no-seed` replayed all migrations; the focused SQL authorization fixture passed through `psql` (the bundled `supabase test db` runner cannot execute this assertion-style, transaction-only fixture because it requires TAP output); `pnpm format:check`; `pnpm lint`; `pnpm typecheck`; `pnpm test` (23 files: 125 tests passed, 3 skipped); `pnpm build`; `pnpm test:e2e` (2 passed, including isolated host/guest local-Supabase flow); `git diff --check`; and the focused source-path scan of the production room entry, `RoomBootstrap`, and typed session client (no mock imports).
 
-Verification: adapter tests passed (1 file, 11 tests); create-page tests passed (1 file, 4 tests); join-page tests passed (1 file, 3 tests); room-bootstrap tests passed (1 file, 3 tests); existing Experience tests passed (3 files, 9 tests); Platform route tests passed (3 files, 26 tests); live local server-operation integration passed (1 file, 1 test); full unit suite passed (20 files, 99 tests; 1 intentionally skipped live test without local environment); `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build` all passed. `pnpm test:e2e` passed (2 tests): at 390×844, isolated host and guest contexts created, joined, bootstrapped, and reloaded a real local room; host controls rendered only for HOST. Create/join/room states have accessible names, field-associated validation errors, alert announcements, disabled pending buttons, and keyboard-operable retry. Local VibeVote Supabase was verified at ports 55320–55329. Client and build-output scans found no server imports, cookie access, browser credential storage, `participantAccessToken`, token hashes, service-role key, or session-flow mock fallback; `git diff --check` passed. Production and Vercel-preview session API calls intentionally fail closed until a durable serverless-compatible rate-limit provider is implemented; local real create, join, and bootstrap are the integration proof for this batch.
+The migration serializes invitation replacement, readiness, and start decisions by locking the session row. The focused SQL fixture covers unauthorized invitation/revocation, expired/revoked and late joins, invalid session states, self-only readiness, privileges, and atomic start behavior.
 
-CI E2E note: Local `pnpm test:e2e` runs both browser tests against the isolated VibeVote Supabase stack. Generic GitHub CI intentionally skips the live local-Supabase host/guest test because it does not provision that stack; a prepared CI environment can opt in with `VIBEVOTE_RUN_LIVE_SESSION_E2E=1`. Production and preview session API behavior remains intentionally fail-closed.
+## Deployment/configuration caveats
 
-Known issues: Invitation copy, room creation, voting, share plan, directions, readiness, and reconnection UI are intentionally local presentation only; QR is a styled placeholder, not an encoded link. The mock `finishedParticipantCount` is fixed and no polling/realtime happens.
+Existing production/preview public APIs still fail closed unless their server-only Supabase and durable rate-limit configuration is present. This batch also requires the existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server; neither may be made public. Apply migrations and complete local reset/RLS proof before a deployment.
 
-Mock assumptions: The existing public-room contract is sufficient for room rendering. Individual ballots are never represented in public room data; the local ballot state exists only within the browser component. The result explanation is mock aggregate copy and is not a client-side decision algorithm.
+## Next dependency
 
-Platform dependencies: Platform-owned invitation/session lifecycle, authorization, private ballot submission, aggregate progress feed, final result/reason receipt, and retry/reconnect semantics.
-
-Requested contract changes: None.
-
-## Platform Lead
-
-Branch: `platform/durable-rate-limit-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-25\vibevote-platform-rate-limit`
-Current task: Durable serverless-compatible rate limiting for public session APIs.
-Completed: Migrations `20260725235152_add_session_rate_limit_v1.sql` and `20260725235855_fix_session_rate_limit_v1_function.sql` add the RLS-protected private fixed-window store and `check_session_rate_limit_v1` service-role RPC; `20260726120000_scope_session_rate_limit_namespaces.sql` forward-migrates the ephemeral store to project-scoped namespaces. The server-only limiter uses Vercel's deployment-controlled `x-forwarded-for` client address, canonicalizes it, HMACs it with a server-only secret, separates Vercel project preview from production, calls the atomic Supabase RPC with a bounded timeout, and fails closed for absent or malformed deployment/provider configuration. Create, join, and bootstrap use distinct policies: 5, 10, and 60 attempts per 60-second fixed window respectively. Development and test remain provider-free for isolated local work.
-Files touched: approved Platform migrations, generated database contract, server-only rate-limit helper, public session routes, focused unit/integration tests, and Platform documentation only.
-Tests run: focused limiter, security, and route tests passed (49 tests across 6 files); isolated Supabase atomic concurrency and route recovery integration passed (2 tests); clean isolated VibeVote Supabase reset replayed both migrations and the SQL fixture passed; `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, full `pnpm test` (23 files, 118 tests), and `pnpm build` passed. Local `pnpm test:e2e` passed (2 tests, including real host/guest create, join, and bootstrap); simulated generic CI passed the ordinary E2E and skipped the isolated live-Supabase flow. Client, secret, and build-output scans found no credential leakage, and `git diff --check` passed. Review follow-up constrained live integration tests to the isolated local API origin (12 focused tests), added deployment configuration guidance, and passed format, lint, typecheck, and diff-check. Draft PR #8 is published; its GitHub Actions verify and Vercel checks are green.
-Known issues: Production and preview now require the existing server-only `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and 32+-character `VIBEVOTE_RATE_LIMIT_KEY_SECRET`, plus exposed Vercel `VERCEL`, `VERCEL_ENV`, and `VERCEL_PROJECT_ID`; `VIBEVOTE_RATE_LIMIT_TIMEOUT_MS` is optional and valid only from 100-10000 ms (default 1000). Missing or failing provider configuration intentionally returns the existing safe 503 response. No in-memory fallback exists.
-Still needed: Complete the full local gate, publish this isolated Platform batch, then continue only with separately authorized readiness, voting, realtime, decision calculation, and results work.
-Blocked by: None.
-
-## Shared contracts changed
-
-Session-v1 contracts merged from `contract/session-v1`: room visibility tiers, create/join/invitation request and response schemas, transition vocabulary, stable API errors, and typed fixtures. Experience must align its mock adapter before integration work.
-
-## Merge order
-
-1. Merge this small shared-contract batch before platform services or Experience adapter integration.
-2. Experience room shell consumes the typed public fixtures through one mock adapter, then integrates session reads, ballot writes, invitations, aggregate progress, and results when platform services are available.
-3. Platform Lead follows with schema/RLS and server routes only after shared product decisions are resolved.
-
-## Integration status
-
-Mock-only frontend; no backend, persistence, API, authentication, realtime, or decision-engine integration.
-
-## Next milestone
-
-Approve unresolved v1 policy choices, then add platform session/invitation and private ballot workflow with additive local Supabase schema and RLS. After that, the Experience Lead aligns the mock adapter to the finalized contracts and runs two-browser validation.
+Open this batch as a draft PR after a final clean status review. The recommended next Experience integration batch is host invitation sharing and participant lobby-readiness UI using these typed endpoints; it should not include ballots, realtime, results, or PWA work.

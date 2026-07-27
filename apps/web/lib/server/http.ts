@@ -61,7 +61,9 @@ export function operationError(error: unknown) {
     return safeError('INVALID_REQUEST', 'The request is not valid.', 400);
   if (error instanceof SafeOperationError) {
     const status =
-      error.code === 'INVALID_INVITE' || error.code === 'INVALID_REQUEST'
+      error.code === 'INVALID_INVITE' ||
+      error.code === 'INVALID_REQUEST' ||
+      error.code === 'INVALID_SESSION_STATUS'
         ? 400
         : error.code === 'CONFLICT'
           ? 409
