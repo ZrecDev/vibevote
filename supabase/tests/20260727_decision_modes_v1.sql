@@ -35,7 +35,7 @@ begin
   perform public.update_participant_readiness_v1(s,repeat('8',64),'READY'); perform public.update_participant_readiness_v1(s,repeat('9',64),'READY'); perform public.start_lobby_voting_v1(s,repeat('8',64));
   perform public.submit_private_ballot_v1(s,repeat('8',64),jsonb_build_array(jsonb_build_object('optionId',o1,'value','LOVE'),jsonb_build_object('optionId',o2,'value','FINE')));
   perform public.submit_private_ballot_v1(s,repeat('9',64),jsonb_build_array(jsonb_build_object('optionId',o1,'value','FINE'),jsonb_build_object('optionId',o2,'value','LOVE')));
-  select id into expected from public.decision_options where session_id=s order by md5(s::text || id::text) limit 1;
+  select o.id into expected from public.decision_options o join public.decision_sessions ds on ds.id=o.session_id where o.session_id=s order by md5(ds.selection_seed::text || o.id::text) limit 1;
   select public.finalize_decision_v1(s,repeat('8',64)) into r;
   assert r->>'winnerOptionId'=expected::text and r->>'method'='CHAOS';
 end $$;

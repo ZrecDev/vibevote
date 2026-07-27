@@ -36,7 +36,7 @@ Invitation expiry, revocation, readiness quorum, late-join rejection, ballot rep
 
 ## Session persistence foundation
 
-Migration `20260724172000_create_session_persistence_foundation.sql` adds `decision_sessions`, `decision_options`, `session_participants`, and `session_invitations`. It uses the contract vocabulary for category, mode, status, role, and readiness. Options have a per-session unique stable position; a server create transaction must call `assert_session_option_count` to enforce the 2-12 total before a room is usable. SQL enforces field domains, foreign keys, cascading session deletion, one host per session, and non-empty credential hashes. Descriptions and hard constraints remain deliberately omitted. Invitation expiry is nullable and has no default lifetime.
+Migration `20260724172000_create_session_persistence_foundation.sql` adds `decision_sessions`, `decision_options`, `session_participants`, and `session_invitations`. It uses the contract vocabulary for category, mode, status, role, and readiness. Options have a per-session unique stable position; a server create transaction must call `assert_session_option_count` to enforce the 2-12 total before a room is usable. SQL enforces field domains, foreign keys, cascading session deletion, one host per session, and non-empty credential hashes. Host-controlled option eligibility is the v1 hard-constraint mechanism; at least one option must remain eligible. The private `selection_seed` is stored on the session and never projected to clients.
 
 ## Secure session operations
 
