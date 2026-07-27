@@ -125,4 +125,21 @@ describe('LobbyScreen invitation and readiness controls', () => {
     expect(screen.queryByRole('button', { name: /finalize decision/i })).toBeNull();
     unmount();
   });
+
+  it('allows one veto locally and explains the Instant Match policy without exposing ballots', () => {
+    const votingHost = {
+      ...host,
+      session: { ...host.session, status: 'VOTING' as const, mode: 'INSTANT_MATCH' as const },
+    };
+    render(<LobbyScreen room={votingHost} isHost />);
+    expect(screen.getByText(/every person to mark it Love or Fine/i)).toBeVisible();
+    fireEvent.change(screen.getByLabelText(`${host.session.options[0]!.label} vote`), {
+      target: { value: 'VETO' },
+    });
+    fireEvent.change(screen.getByLabelText(`${host.session.options[1]!.label} vote`), {
+      target: { value: 'VETO' },
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(/one veto/i);
+    expect(screen.getByLabelText(`${host.session.options[1]!.label} vote`)).toHaveValue('PASS');
+  });
 });
