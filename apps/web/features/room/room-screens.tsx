@@ -11,6 +11,8 @@ import {
   createInvitation,
   SessionClientError,
   startLobbyVoting,
+  submitPrivateBallot,
+  finalizeDecision,
   updateCurrentReadiness,
 } from '@/features/session/session-client';
 import { ParticipantList } from './room-components';
@@ -31,6 +33,9 @@ export function LobbyScreen({
   const [pending, setPending] = useState<'invite' | 'readiness' | undefined>();
   const [starting, setStarting] = useState(false);
   const [message, setMessage] = useState<string>();
+  const [votes, setVotes] = useState<Record<string, 'LOVE' | 'FINE' | 'PASS' | 'VETO'>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(room.result);
   const currentParticipant = participants.find(
     (participant) => participant.id === room.currentParticipantId,
   );
@@ -94,11 +99,47 @@ export function LobbyScreen({
       setStarting(false);
     }
   }
+  async function submitVotes() {
+    setSubmitting(true);
+    setMessage(undefined);
+    try {
+      const progress = await submitPrivateBallot(room.session.id, {
+        ballots: room.session.options.map((option) => ({
+          optionId: option.id,
+          value: votes[option.id] ?? 'PASS',
+        })),
+      });
+      setMessage(
+        `${progress.progress.finishedParticipantCount} of ${progress.progress.participantCount} people have finished.`,
+      );
+    } catch (reason) {
+      setMessage(
+        reason instanceof SessionClientError ? reason.message : 'We could not submit your ballot.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+  async function finalize() {
+    setSubmitting(true);
+    try {
+      setResult((await finalizeDecision(room.session.id)).result);
+      onRefresh?.();
+    } catch (reason) {
+      setMessage(
+        reason instanceof SessionClientError
+          ? reason.message
+          : 'We could not finalize this decision.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="stack">
       <section className="hero-card card">
-        <span className="status-pill">Room lobby</span>
+        <span className="status-pill">{room.session.status.toLowerCase()}</span>
         <h1 className="room-title">{room.session.title}</h1>
         <p className="lede">Find the choice the group can genuinely get behind.</p>
         <div className="room-meta">
@@ -172,6 +213,50 @@ export function LobbyScreen({
           </div>
         ))}
       </Card>
+      {room.session.status === 'VOTING' && !result && (
+        <Card>
+          <p className="eyebrow">Private ballot</p>
+          <h2>Your preferences stay private.</h2>
+          {room.session.options.map((option) => (
+            <div className="option-line" key={`vote-${option.id}`}>
+              <strong>{option.label}</strong>
+              <select
+                aria-label={`${option.label} vote`}
+                value={votes[option.id] ?? 'PASS'}
+                onChange={(event) =>
+                  setVotes((current) => ({
+                    ...current,
+                    [option.id]: event.target.value as 'LOVE' | 'FINE' | 'PASS' | 'VETO',
+                  }))
+                }
+              >
+                <option value="LOVE">Love</option>
+                <option value="FINE">Fine</option>
+                <option value="PASS">Pass</option>
+                <option value="VETO">Veto</option>
+              </select>
+            </div>
+          ))}
+          <Button disabled={submitting} onClick={() => void submitVotes()}>
+            {submitting ? 'Submitting…' : 'Submit private ballot'}
+          </Button>
+          {isHost && (
+            <Button variant="secondary" disabled={submitting} onClick={() => void finalize()}>
+              Finalize decision
+            </Button>
+          )}
+        </Card>
+      )}
+      {result && (
+        <Card>
+          <p className="eyebrow">Decision locked</p>
+          <h2>
+            {room.session.options.find((option) => option.id === result.winnerOptionId)?.label ??
+              'Your result'}
+          </h2>
+          <p>{result.explanation}</p>
+        </Card>
+      )}
       {message && <p role="status">{message}</p>}
       <div className="row">
         {isHost && room.session.status === 'LOBBY' && (

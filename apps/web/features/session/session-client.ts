@@ -6,6 +6,9 @@ import {
   bootstrapSessionResponseSchema,
   createInvitationResponseSchema,
   hostRoomStateSchema,
+  finalResultResponseSchema,
+  submitPrivateBallotRequestSchema,
+  submitPrivateBallotResponseSchema,
   createSessionRequestSchema,
   createSessionResponseSchema,
   joinSessionRequestSchema,
@@ -21,6 +24,7 @@ import {
   type ParticipantReadiness,
   type UpdateReadinessResponse,
   type HostRoomState,
+  type SubmitPrivateBallotRequest,
 } from '@vibevote/contracts';
 import { z } from 'zod';
 
@@ -124,6 +128,26 @@ export function startLobbyVoting(sessionId: string): Promise<{ session: HostRoom
   return request(
     `/api/v1/sessions/${encodeURIComponent(sessionId)}/start`,
     z.object({ session: hostRoomStateSchema }).strict(),
+    { method: 'POST' },
+  );
+}
+
+export function submitPrivateBallot(sessionId: string, input: SubmitPrivateBallotRequest) {
+  return request(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/ballot`,
+    submitPrivateBallotResponseSchema,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(submitPrivateBallotRequestSchema.parse(input)),
+    },
+  );
+}
+
+export function finalizeDecision(sessionId: string) {
+  return request(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/finalize`,
+    finalResultResponseSchema,
     { method: 'POST' },
   );
 }

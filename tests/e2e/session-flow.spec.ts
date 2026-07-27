@@ -79,10 +79,60 @@ test('host and guest bootstrap independently through browser-managed cookies', a
   expect(await (await startResponse).json()).toMatchObject({ ok: true });
   await expect(host.getByRole('button', { name: /^start voting$/i })).toHaveCount(0);
 
+  // Realtime is intentionally not part of this batch; a browser refresh observes
+  // the server-owned transition through the authenticated bootstrap contract.
+  await host.reload();
+  await guest.reload();
+  await expect(host.getByRole('button', { name: /submit private ballot/i })).toBeVisible();
+  await expect(guest.getByRole('button', { name: /submit private ballot/i })).toBeVisible();
+  await host.getByLabel('North Star Cafe vote').selectOption('LOVE');
+  await guest.getByLabel('North Star Cafe vote').selectOption('FINE');
+  await guest.getByLabel('Green Bowl vote').selectOption('VETO');
+  const hostBallot = host.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/v1/sessions/${hostSessionId}/ballot`) &&
+      response.request().method() === 'POST',
+  );
+  await host.getByRole('button', { name: /submit private ballot/i }).click();
+  const hostBallotPayload = await (await hostBallot).json();
+  expect(hostBallotPayload).toMatchObject({
+    ok: true,
+    data: { progress: { finishedParticipantCount: 1 } },
+  });
+  expect(JSON.stringify(hostBallotPayload)).not.toMatch(
+    /LOVE|FINE|PASS|VETO|participantAccessToken|invitationToken/i,
+  );
+  const guestBallot = guest.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/v1/sessions/${guestSessionId}/ballot`) &&
+      response.request().method() === 'POST',
+  );
+  await guest.getByRole('button', { name: /submit private ballot/i }).click();
+  expect(await (await guestBallot).json()).toMatchObject({
+    ok: true,
+    data: { progress: { finishedParticipantCount: 2 } },
+  });
+  const finalizeResponse = host.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/v1/sessions/${hostSessionId}/finalize`) &&
+      response.request().method() === 'POST',
+  );
+  await host.getByRole('button', { name: /finalize decision/i }).click();
+  const finalizePayload = await (await finalizeResponse).json();
+  expect(finalizePayload).toMatchObject({ ok: true });
+  expect(JSON.stringify(finalizePayload)).not.toMatch(
+    /LOVE|FINE|PASS|VETO|participantAccessToken|invitationToken/i,
+  );
+  await expect(host.getByText('Decision locked')).toBeVisible();
+
   await host.reload();
   await guest.reload();
   await expect(host.getByRole('button', { name: /start voting/i })).toHaveCount(0);
   await expect(guest.getByRole('button', { name: /start voting/i })).toHaveCount(0);
+  await expect(host.getByText('Decision locked')).toBeVisible();
+  await expect(guest.getByText('Decision locked')).toBeVisible();
+  await expect(host.getByRole('heading', { name: 'North Star Cafe' })).toBeVisible();
+  await expect(guest.getByRole('heading', { name: 'North Star Cafe' })).toBeVisible();
   for (const page of [host, guest]) {
     const storage = await page.evaluate(() => [
       ...Object.entries(localStorage),
@@ -94,7 +144,12 @@ test('host and guest bootstrap independently through browser-managed cookies', a
     expect(new URL(page.url()).search).toBe('');
     expect(new URL(page.url()).hash).toBe('');
   }
-  expect(apiRequests).toHaveLength(11);
+  expect(apiRequests).toEqual(
+    expect.arrayContaining([
+      expect.stringMatching(`/api/v1/sessions/${hostSessionId}/ballot$`),
+      expect.stringMatching(`/api/v1/sessions/${hostSessionId}/finalize$`),
+    ]),
+  );
   await hostContext.close();
   await guestContext.close();
 });

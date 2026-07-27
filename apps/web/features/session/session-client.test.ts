@@ -5,9 +5,11 @@ import {
   bootstrapSession,
   createInvitation,
   createSession,
+  finalizeDecision,
   joinSession,
   SessionClientError,
   updateCurrentReadiness,
+  submitPrivateBallot,
 } from './session-client';
 
 const host = {
@@ -131,6 +133,48 @@ describe('session client', () => {
     );
     expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(
       /participantAccessToken|Authorization/,
+    );
+  });
+
+  it('uses typed private-ballot and finalization endpoints with same-origin cookies only', async () => {
+    const result = {
+      id: '550e8400-e29b-41d4-a716-446655440099',
+      sessionId: host.session.session.id,
+      winnerOptionId: host.session.session.options[0]!.id,
+      method: 'BEST_FIT',
+      explanation: 'Aggregate result.',
+      finalizedAt: '2026-07-28T00:00:00.000Z',
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        respond({
+          ok: true,
+          data: { progress: { participantCount: 2, finishedParticipantCount: 1 } },
+        }),
+      )
+      .mockResolvedValueOnce(respond({ ok: true, data: { result } }));
+    await expect(
+      submitPrivateBallot(host.session.session.id, {
+        ballots: host.session.session.options.map((option) => ({
+          optionId: option.id,
+          value: 'PASS' as const,
+        })),
+      }),
+    ).resolves.toMatchObject({ progress: { finishedParticipantCount: 1 } });
+    await expect(finalizeDecision(host.session.session.id)).resolves.toEqual({ result });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      `/api/v1/sessions/${host.session.session.id}/ballot`,
+      expect.objectContaining({ method: 'POST', credentials: 'same-origin' }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `/api/v1/sessions/${host.session.session.id}/finalize`,
+      expect.objectContaining({ method: 'POST', credentials: 'same-origin' }),
+    );
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(
+      /Authorization|participantAccessToken|participant_access_token_hash/,
     );
   });
 
