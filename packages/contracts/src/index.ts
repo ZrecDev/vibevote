@@ -108,10 +108,10 @@ export const updateReadinessResponseSchema = z
   .strict();
 
 /** Host-only hard-constraint control. At least one option remains eligible. */
-export const updateOptionEligibilityRequestSchema = z
-  .object({ eligible: z.boolean() })
+export const updateOptionEligibilityRequestSchema = z.object({ eligible: z.boolean() }).strict();
+export const updateOptionEligibilityResponseSchema = z
+  .object({ option: decisionOptionSchema })
   .strict();
-export const updateOptionEligibilityResponseSchema = z.object({ option: decisionOptionSchema }).strict();
 
 /** One private preference per option. This shape is never part of room state or realtime data. */
 export const privateBallotEntrySchema = z

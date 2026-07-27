@@ -16,7 +16,10 @@ export async function PATCH(
   if (parsed.error) return parsed.error;
   try {
     const { sessionId, optionId } = await params;
-    return json({ ok: true, data: await updateOptionEligibility(sessionId, token, optionId, parsed.value) });
+    return json({
+      ok: true,
+      data: await updateOptionEligibility(sessionId, token, optionId, parsed.value),
+    });
   } catch (error) {
     return operationError(error);
   }
