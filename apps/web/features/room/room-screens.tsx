@@ -10,16 +10,26 @@ import { Button, Card } from '@/components/ui';
 import {
   createInvitation,
   SessionClientError,
+  startLobbyVoting,
   updateCurrentReadiness,
 } from '@/features/session/session-client';
 import { ParticipantList } from './room-components';
 
 type LobbyRoom = HostRoomState | ParticipantRoomState;
 
-export function LobbyScreen({ room, isHost }: { room: LobbyRoom; isHost: boolean }) {
+export function LobbyScreen({
+  room,
+  isHost,
+  onRefresh,
+}: {
+  room: LobbyRoom;
+  isHost: boolean;
+  onRefresh?: () => void;
+}) {
   const [participants, setParticipants] = useState(room.participants);
   const [inviteUrl, setInviteUrl] = useState<string>();
   const [pending, setPending] = useState<'invite' | 'readiness' | undefined>();
+  const [starting, setStarting] = useState(false);
   const [message, setMessage] = useState<string>();
   const currentParticipant = participants.find(
     (participant) => participant.id === room.currentParticipantId,
@@ -68,6 +78,20 @@ export function LobbyScreen({ room, isHost }: { room: LobbyRoom; isHost: boolean
       setMessage('Invitation link copied.');
     } catch {
       setMessage('Copy the invitation link from the field below.');
+    }
+  }
+  async function startVoting() {
+    setStarting(true);
+    setMessage(undefined);
+    try {
+      await startLobbyVoting(room.session.id);
+      onRefresh?.();
+    } catch (reason) {
+      setMessage(
+        reason instanceof SessionClientError ? reason.message : 'We could not start voting.',
+      );
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -149,7 +173,13 @@ export function LobbyScreen({ room, isHost }: { room: LobbyRoom; isHost: boolean
         ))}
       </Card>
       {message && <p role="status">{message}</p>}
-      <div className="row">{isHost && <Button disabled>Start voting (coming soon)</Button>}</div>
+      <div className="row">
+        {isHost && room.session.status === 'LOBBY' && (
+          <Button disabled={starting} onClick={() => void startVoting()}>
+            {starting ? 'Starting voting…' : 'Start voting'}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   apiSuccessSchema,
   bootstrapSessionResponseSchema,
   createInvitationResponseSchema,
+  hostRoomStateSchema,
   createSessionRequestSchema,
   createSessionResponseSchema,
   joinSessionRequestSchema,
@@ -19,8 +20,9 @@ import {
   type CreateInvitationResponse,
   type ParticipantReadiness,
   type UpdateReadinessResponse,
+  type HostRoomState,
 } from '@vibevote/contracts';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 export class SessionClientError extends Error {
   constructor(
@@ -115,5 +117,13 @@ export function updateCurrentReadiness(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     },
+  );
+}
+
+export function startLobbyVoting(sessionId: string): Promise<{ session: HostRoomState }> {
+  return request(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/start`,
+    z.object({ session: hostRoomStateSchema }).strict(),
+    { method: 'POST' },
   );
 }

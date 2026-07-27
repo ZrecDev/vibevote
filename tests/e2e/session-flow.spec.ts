@@ -37,7 +37,7 @@ test('host and guest bootstrap independently through browser-managed cookies', a
   expect(createPayload).not.toHaveProperty('participantAccessToken');
   const hostSessionId = createPayload.data.session.session.id as string;
   await expect(host).toHaveURL(new RegExp(`/room/${hostSessionId}$`));
-  await expect(host.getByRole('button', { name: /start voting/i })).toBeVisible();
+  await expect(host.getByRole('button', { name: /start voting/i })).toHaveCount(0);
 
   const invitationResponse = host.waitForResponse(
     (response) =>
@@ -70,9 +70,18 @@ test('host and guest bootstrap independently through browser-managed cookies', a
   await host.getByRole('button', { name: /i am ready/i }).click();
   await expect(host.getByRole('button', { name: /i need more time/i })).toBeVisible();
 
+  const startResponse = host.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/v1/sessions/${hostSessionId}/start`) &&
+      response.request().method() === 'POST',
+  );
+  await host.getByRole('button', { name: /^start voting$/i }).click();
+  expect(await (await startResponse).json()).toMatchObject({ ok: true });
+  await expect(host.getByRole('button', { name: /^start voting$/i })).toHaveCount(0);
+
   await host.reload();
   await guest.reload();
-  await expect(host.getByRole('button', { name: /start voting/i })).toBeVisible();
+  await expect(host.getByRole('button', { name: /start voting/i })).toHaveCount(0);
   await expect(guest.getByRole('button', { name: /start voting/i })).toHaveCount(0);
   for (const page of [host, guest]) {
     const storage = await page.evaluate(() => [
@@ -85,7 +94,7 @@ test('host and guest bootstrap independently through browser-managed cookies', a
     expect(new URL(page.url()).search).toBe('');
     expect(new URL(page.url()).hash).toBe('');
   }
-  expect(apiRequests).toHaveLength(9);
+  expect(apiRequests).toHaveLength(11);
   await hostContext.close();
   await guestContext.close();
 });
