@@ -8,12 +8,14 @@ const {
   updateCurrentReadiness,
   submitPrivateBallot,
   finalizeDecision,
+  updateOptionEligibility,
 } = vi.hoisted(() => ({
   createInvitation: vi.fn(),
   startLobbyVoting: vi.fn(),
   updateCurrentReadiness: vi.fn(),
   submitPrivateBallot: vi.fn(),
   finalizeDecision: vi.fn(),
+  updateOptionEligibility: vi.fn(),
 }));
 vi.mock('@/features/session/session-client', () => ({
   createInvitation,
@@ -21,6 +23,7 @@ vi.mock('@/features/session/session-client', () => ({
   updateCurrentReadiness,
   submitPrivateBallot,
   finalizeDecision,
+  updateOptionEligibility,
   SessionClientError: class SessionClientError extends Error {},
 }));
 
@@ -41,6 +44,7 @@ describe('LobbyScreen invitation and readiness controls', () => {
     updateCurrentReadiness.mockReset();
     submitPrivateBallot.mockReset();
     finalizeDecision.mockReset();
+    updateOptionEligibility.mockReset();
   });
 
   it('keeps sharing host-only and lets a participant update only their own readiness', async () => {
@@ -81,6 +85,22 @@ describe('LobbyScreen invitation and readiness controls', () => {
     fireEvent.click(screen.getByRole('button', { name: /^start voting$/i }));
     await waitFor(() => expect(startLobbyVoting).toHaveBeenCalledWith(host.session.id));
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets only a host apply a safe eligibility constraint before voting', async () => {
+    updateOptionEligibility.mockResolvedValue({
+      option: { ...host.session.options[0], eligible: false },
+    });
+    render(<LobbyScreen room={host} isHost />);
+    fireEvent.click(screen.getAllByRole('button', { name: /^exclude$/i })[0]!);
+    await waitFor(() =>
+      expect(updateOptionEligibility).toHaveBeenCalledWith(
+        host.session.id,
+        host.session.options[0]!.id,
+        false,
+      ),
+    );
+    expect(screen.getByText('Excluded')).toBeVisible();
   });
 
   it('submits a complete private ballot and lets only the host finalize the server result', async () => {

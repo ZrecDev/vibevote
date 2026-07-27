@@ -9,6 +9,8 @@ import {
   finalResultResponseSchema,
   submitPrivateBallotRequestSchema,
   submitPrivateBallotResponseSchema,
+  updateOptionEligibilityRequestSchema,
+  updateOptionEligibilityResponseSchema,
   createSessionRequestSchema,
   createSessionResponseSchema,
   joinSessionRequestSchema,
@@ -149,5 +151,17 @@ export function finalizeDecision(sessionId: string) {
     `/api/v1/sessions/${encodeURIComponent(sessionId)}/finalize`,
     finalResultResponseSchema,
     { method: 'POST' },
+  );
+}
+
+export function updateOptionEligibility(sessionId: string, optionId: string, eligible: boolean) {
+  return request(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/options/${encodeURIComponent(optionId)}/eligibility`,
+    updateOptionEligibilityResponseSchema,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateOptionEligibilityRequestSchema.parse({ eligible })),
+    },
   );
 }

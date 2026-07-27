@@ -13,6 +13,7 @@ import {
   startLobbyVoting,
   submitPrivateBallot,
   finalizeDecision,
+  updateOptionEligibility,
   updateCurrentReadiness,
 } from '@/features/session/session-client';
 import { ParticipantList } from './room-components';
@@ -35,6 +36,7 @@ export function LobbyScreen({
   onRefresh?: () => void;
 }) {
   const [participants, setParticipants] = useState(room.participants);
+  const [options, setOptions] = useState(room.session.options);
   const [inviteUrl, setInviteUrl] = useState<string>();
   const [pending, setPending] = useState<'invite' | 'readiness' | undefined>();
   const [starting, setStarting] = useState(false);
@@ -42,6 +44,7 @@ export function LobbyScreen({
   const [votes, setVotes] = useState<Record<string, 'LOVE' | 'FINE' | 'PASS' | 'VETO'>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(room.result);
+  const [optionPendingId, setOptionPendingId] = useState<string>();
   const vetoCount = Object.values(votes).filter((value) => value === 'VETO').length;
   const currentParticipant = participants.find(
     (participant) => participant.id === room.currentParticipantId,
@@ -106,12 +109,30 @@ export function LobbyScreen({
       setStarting(false);
     }
   }
+  async function changeEligibility(optionId: string, eligible: boolean) {
+    setOptionPendingId(optionId);
+    setMessage(undefined);
+    try {
+      const response = await updateOptionEligibility(room.session.id, optionId, eligible);
+      setOptions((current) =>
+        current.map((option) => (option.id === response.option.id ? response.option : option)),
+      );
+    } catch (reason) {
+      setMessage(
+        reason instanceof SessionClientError
+          ? reason.message
+          : 'We could not update this constraint.',
+      );
+    } finally {
+      setOptionPendingId(undefined);
+    }
+  }
   async function submitVotes() {
     setSubmitting(true);
     setMessage(undefined);
     try {
       const progress = await submitPrivateBallot(room.session.id, {
-        ballots: room.session.options.map((option) => ({
+        ballots: options.map((option) => ({
           optionId: option.id,
           value: votes[option.id] ?? 'PASS',
         })),
@@ -151,7 +172,7 @@ export function LobbyScreen({
         <p className="lede">Find the choice the group can genuinely get behind.</p>
         <div className="room-meta">
           <span>{modeLabel[room.session.mode]}</span>
-          <span>{room.session.options.length} options</span>
+          <span>{options.length} options</span>
           <span>{room.participants.length} people</span>
         </div>
       </section>
@@ -213,12 +234,27 @@ export function LobbyScreen({
             <h2>Everyone considers the same options.</h2>
           </div>
         </div>
-        {room.session.options.map((option) => (
+        {options.map((option) => (
           <div className="option-line" key={option.id}>
             <span className="option-number">{option.order + 1}</span>
             <strong>{option.label}</strong>
+            {!option.eligible && <span className="status-pill">Excluded</span>}
+            {isHost && room.session.status === 'LOBBY' && (
+              <Button
+                variant="quiet"
+                disabled={optionPendingId === option.id}
+                onClick={() => void changeEligibility(option.id, !option.eligible)}
+              >
+                {option.eligible ? 'Exclude' : 'Include'}
+              </Button>
+            )}
           </div>
         ))}
+        {isHost && room.session.status === 'LOBBY' && (
+          <p className="muted">
+            Exclude an option that fails a hard constraint. At least one stays eligible.
+          </p>
+        )}
       </Card>
       {room.session.status === 'VOTING' && !result && (
         <Card>
@@ -232,12 +268,13 @@ export function LobbyScreen({
                 : 'Best Fit balances the group’s aggregate preferences.'}{' '}
             You have one veto.
           </p>
-          {room.session.options.map((option) => (
+          {options.map((option) => (
             <div className="option-line" key={`vote-${option.id}`}>
               <strong>{option.label}</strong>
               <select
                 aria-label={`${option.label} vote`}
                 value={votes[option.id] ?? 'PASS'}
+                disabled={!option.eligible}
                 onChange={(event) => {
                   const value = event.target.value as 'LOVE' | 'FINE' | 'PASS' | 'VETO';
                   if (value === 'VETO' && votes[option.id] !== 'VETO' && vetoCount >= 1) {
@@ -255,6 +292,7 @@ export function LobbyScreen({
                 <option value="PASS">Pass</option>
                 <option value="VETO">Veto</option>
               </select>
+              {!option.eligible && <span className="muted">Excluded by a hard constraint</span>}
             </div>
           ))}
           <Button disabled={submitting} onClick={() => void submitVotes()}>
@@ -271,8 +309,7 @@ export function LobbyScreen({
         <Card>
           <p className="eyebrow">Decision locked</p>
           <h2>
-            {room.session.options.find((option) => option.id === result.winnerOptionId)?.label ??
-              'Your result'}
+            {options.find((option) => option.id === result.winnerOptionId)?.label ?? 'Your result'}
           </h2>
           <p>{result.explanation}</p>
         </Card>
