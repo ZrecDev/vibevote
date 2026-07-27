@@ -5,28 +5,36 @@ import type { BootstrapSessionResponse } from '@vibevote/contracts';
 import { bootstrapSession, SessionClientError } from '@/features/session/session-client';
 import { LobbyScreen, RoomState } from './room-screens';
 
+const RECOVERY_INTERVAL_MS = 5_000;
+type RoomLoadState = {
+  loading: boolean;
+  response?: BootstrapSessionResponse;
+  error?: string;
+};
+
 export function RoomBootstrap({ sessionId }: { sessionId: string }) {
   const requestId = useRef(0);
-  const [state, setState] = useState<{
-    loading: boolean;
-    response?: BootstrapSessionResponse;
-    error?: string;
-  }>({ loading: true });
-  const load = useCallback(async () => {
-    const currentRequest = ++requestId.current;
-    setState({ loading: true });
-    try {
-      const response = await bootstrapSession(sessionId);
-      if (currentRequest === requestId.current) setState({ loading: false, response });
-    } catch (reason) {
-      if (currentRequest === requestId.current)
-        setState({
-          loading: false,
-          error:
-            reason instanceof SessionClientError ? reason.message : 'We could not load this room.',
-        });
-    }
-  }, [sessionId]);
+  const [state, setState] = useState<RoomLoadState>({ loading: true });
+  const load = useCallback(
+    async (background = false) => {
+      const currentRequest = ++requestId.current;
+      if (!background) setState({ loading: true });
+      try {
+        const response = await bootstrapSession(sessionId);
+        if (currentRequest === requestId.current) setState({ loading: false, response });
+      } catch (reason) {
+        if (currentRequest === requestId.current && !background)
+          setState({
+            loading: false,
+            error:
+              reason instanceof SessionClientError
+                ? reason.message
+                : 'We could not load this room.',
+          });
+      }
+    },
+    [sessionId],
+  );
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
@@ -35,6 +43,19 @@ export function RoomBootstrap({ sessionId }: { sessionId: string }) {
     return () => {
       active = false;
       requestId.current += 1;
+    };
+  }, [load]);
+  useEffect(() => {
+    const recover = () => {
+      if (document.visibilityState === 'visible') void load(true);
+    };
+    const interval = window.setInterval(recover, RECOVERY_INTERVAL_MS);
+    window.addEventListener('online', recover);
+    document.addEventListener('visibilitychange', recover);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('online', recover);
+      document.removeEventListener('visibilitychange', recover);
     };
   }, [load]);
   if (state.loading) return <RoomState kind="loading" />;

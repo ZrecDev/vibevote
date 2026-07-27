@@ -71,6 +71,16 @@ describe('RoomBootstrap', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: /start voting/i })).toBeNull());
   });
 
+  it('recovers safe room state on reconnect without replacing a loaded room with an error', async () => {
+    bootstrapSession.mockResolvedValueOnce(host).mockResolvedValueOnce(guest);
+    render(<RoomBootstrap sessionId={host.session.session.id} />);
+    await screen.findByRole('button', { name: /^start voting$/i });
+    fireEvent(window, new Event('online'));
+    await waitFor(() => expect(bootstrapSession).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /start voting/i })).toBeNull());
+    expect(screen.getByText(guest.session.session.title)).toBeVisible();
+  });
+
   it('keeps the authenticated bootstrap dependency path free of mock fixtures', () => {
     for (const file of ['room-bootstrap.tsx', 'room-screens.tsx', 'room-components.tsx']) {
       expect(readFileSync(resolve(__dirname, file), 'utf8')).not.toMatch(
