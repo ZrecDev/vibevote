@@ -107,6 +107,12 @@ export const updateReadinessResponseSchema = z
   .object({ participant: sessionParticipantSchema })
   .strict();
 
+/** Host-only hard-constraint control. At least one option remains eligible. */
+export const updateOptionEligibilityRequestSchema = z.object({ eligible: z.boolean() }).strict();
+export const updateOptionEligibilityResponseSchema = z
+  .object({ option: decisionOptionSchema })
+  .strict();
+
 /** One private preference per option. This shape is never part of room state or realtime data. */
 export const privateBallotEntrySchema = z
   .object({ optionId: z.string().uuid(), value: voteValueSchema })
@@ -274,6 +280,7 @@ export type CreateInvitationRequest = z.infer<typeof createInvitationRequestSche
 export type CreateInvitationResponse = z.infer<typeof createInvitationResponseSchema>;
 export type UpdateReadinessRequest = z.infer<typeof updateReadinessRequestSchema>;
 export type UpdateReadinessResponse = z.infer<typeof updateReadinessResponseSchema>;
+export type UpdateOptionEligibilityResponse = z.infer<typeof updateOptionEligibilityResponseSchema>;
 export type PrivateBallotEntry = z.infer<typeof privateBallotEntrySchema>;
 export type SubmitPrivateBallotRequest = z.infer<typeof submitPrivateBallotRequestSchema>;
 export type AggregateProgress = z.infer<typeof aggregateProgressSchema>;

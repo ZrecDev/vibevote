@@ -3,6 +3,8 @@ import {
   hostRoomStateSchema,
   updateReadinessRequestSchema,
   updateReadinessResponseSchema,
+  updateOptionEligibilityRequestSchema,
+  updateOptionEligibilityResponseSchema,
 } from '@vibevote/contracts';
 import { mapOperationError, SafeOperationError } from './errors';
 import type { ServerSupabaseClient } from './operations';
@@ -82,6 +84,29 @@ export async function updateReadiness(
     });
     if (error) throw error;
     return updateReadinessResponseSchema.parse({ participant: data });
+  } catch (error) {
+    throw mapOperationError(error);
+  }
+}
+
+export async function updateOptionEligibility(
+  sessionId: string,
+  participantToken: string,
+  optionId: string,
+  request: unknown,
+  { client = createServiceRoleClient() }: { client?: ServerSupabaseClient } = {},
+) {
+  valid(sessionId);
+  try {
+    const input = updateOptionEligibilityRequestSchema.parse(request);
+    const { data, error } = await client.rpc('update_option_eligibility_v1', {
+      p_session_id: sessionId,
+      p_host_participant_access_token_hash: hashToken(participantToken),
+      p_option_id: optionId,
+      p_eligible: input.eligible,
+    });
+    if (error) throw error;
+    return updateOptionEligibilityResponseSchema.parse({ option: data });
   } catch (error) {
     throw mapOperationError(error);
   }
