@@ -45,5 +45,11 @@ export function RoomBootstrap({ sessionId }: { sessionId: string }) {
         <p role="alert">{state.error}</p>
       </div>
     );
-  return <LobbyScreen room={state.response!.session} isHost={state.response!.kind === 'HOST'} />;
+  return (
+    <LobbyScreen
+      room={state.response!.session}
+      isHost={state.response!.kind === 'HOST'}
+      onRefresh={() => void load()}
+    />
+  );
 }

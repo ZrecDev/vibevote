@@ -2,12 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { fixtures } from '@vibevote/contracts';
 import { LobbyScreen } from './room-screens';
 
-const { createInvitation, updateCurrentReadiness } = vi.hoisted(() => ({
+const { createInvitation, startLobbyVoting, updateCurrentReadiness } = vi.hoisted(() => ({
   createInvitation: vi.fn(),
+  startLobbyVoting: vi.fn(),
   updateCurrentReadiness: vi.fn(),
 }));
 vi.mock('@/features/session/session-client', () => ({
   createInvitation,
+  startLobbyVoting,
   updateCurrentReadiness,
   SessionClientError: class SessionClientError extends Error {},
 }));
@@ -25,6 +27,7 @@ const guest = {
 describe('LobbyScreen invitation and readiness controls', () => {
   beforeEach(() => {
     createInvitation.mockReset();
+    startLobbyVoting.mockReset();
     updateCurrentReadiness.mockReset();
   });
 
@@ -55,5 +58,16 @@ describe('LobbyScreen invitation and readiness controls', () => {
   it('does not offer host invitation controls to a guest', () => {
     render(<LobbyScreen room={guest} isHost={false} />);
     expect(screen.queryByRole('button', { name: /create share link/i })).toBeNull();
+  });
+
+  it('lets a ready host request the guarded server transition and refresh the room', async () => {
+    startLobbyVoting.mockResolvedValue({
+      session: { ...host, session: { ...host.session, status: 'VOTING' } },
+    });
+    const onRefresh = vi.fn();
+    render(<LobbyScreen room={host} isHost onRefresh={onRefresh} />);
+    fireEvent.click(screen.getByRole('button', { name: /^start voting$/i }));
+    await waitFor(() => expect(startLobbyVoting).toHaveBeenCalledWith(host.session.id));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 });

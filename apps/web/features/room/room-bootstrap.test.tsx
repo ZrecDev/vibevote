@@ -31,7 +31,7 @@ describe('RoomBootstrap', () => {
     render(<RoomBootstrap sessionId={host.session.session.id} />);
     expect(screen.getByRole('status')).toHaveTextContent(/getting your room ready/i);
     await waitFor(() => expect(bootstrapSession).toHaveBeenCalledWith(host.session.session.id));
-    expect(await screen.findByRole('button', { name: /start voting/i })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: /^start voting$/i })).toBeEnabled();
   });
 
   it('removes prior host controls after a GUEST route response', async () => {
