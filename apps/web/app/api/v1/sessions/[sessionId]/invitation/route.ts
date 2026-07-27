@@ -4,14 +4,19 @@ import { json, operationError, safeError } from '@/lib/server/http';
 import { trustedOrigin } from '@/lib/server/origin';
 import { participantToken } from '@/lib/server/participant-token';
 
-const base = (request: Request) => new URL('/join', request.url).toString();
 async function context(request: Request, params: Promise<{ sessionId: string }>) {
   const trust = trustedOrigin(request);
   if (trust.error)
-    return { error: safeError('UNAUTHORIZED', 'Request origin is not allowed.', 403) };
+    return {
+      error: safeError(
+        'UNAUTHORIZED',
+        trust.error === 'rejected' ? 'Request origin is not allowed.' : 'Service is unavailable.',
+        trust.error === 'rejected' ? 403 : 503,
+      ),
+    };
   const token = participantToken(request);
   if (!token) return { error: safeError('UNAUTHORIZED', 'This session is not available.', 401) };
-  return { token, sessionId: (await params).sessionId };
+  return { token, sessionId: (await params).sessionId, origin: trust.origin! };
 }
 export async function POST(
   request: Request,
@@ -22,7 +27,7 @@ export async function POST(
   try {
     return json({
       ok: true,
-      data: await replaceInvitation(value.sessionId, value.token, base(request)),
+      data: await replaceInvitation(value.sessionId, value.token, `${value.origin}/join`),
     });
   } catch (error) {
     return operationError(error);
