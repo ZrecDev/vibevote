@@ -1,35 +1,23 @@
 # Current Project Handoff
 
-## Merged baseline
+## Released v1 milestone
 
-PR #7 (session API integration and authenticated bootstrap), PR #8 (durable public-session rate limiting), PR #9 (client-safe collaboration contracts), PR #10 (invitation/readiness operations), PR #11 (expiry timestamp normalization), PR #12 (trusted public invitation origin), PR #13 (invitation/readiness UI), PR #14 (start-voting UI), PR #15 (private ballots and result finalization), and PR #16 (safe finalized-result projection) are merged into `main`. The production room entry remains `room page -> RoomBootstrap -> typed session client -> LobbyScreen({ room, isHost })`; production room code has no import path to `mockRoom` or mock-result modules.
+PRs #7 through #25 are merged into `main`. The production room path is `room page -> RoomBootstrap -> typed session client -> LobbyScreen({ room, isHost })`; its production module graph has no path to `mockRoom` or mock-result modules.
 
-## Merged Platform batch
+Two people can create and join a custom room, become ready, start voting, submit complete private ballots, and receive the same immutable server-locked result. Invitations are host-controlled, hashed, one-active-at-a-time, and expire after 24 hours. Participant credentials remain HttpOnly cookies and never enter browser state, logs, room projections, realtime-shaped recovery data, or PWA caches.
 
-Branch: `platform/invitations-readiness-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-27\vibevote-platform-invitations-readiness`
+## Decision and constraint policy
 
-This additive batch adds service-role-only server operations and HTTP routes for host-only invitation replacement/revocation, self-only lobby readiness updates, and a guarded `LOBBY -> VOTING` transition. Invitation tokens and participant credentials are generated and hashed server-side; hashes and credentials are excluded from returned JSON, logs, room projections, and the browser cookie remains HttpOnly.
+Hosts can set an option’s eligibility in `DRAFT` or `LOBBY`; guests cannot change it and at least one option stays eligible. Each ballot permits one veto. Instant Match requires universal Love/Fine acceptance, Best Fit ranks aggregate scores, and Chaos chooses among eligible group-accepted options. A private per-session seed resolves equal candidates without being returned to a client. Finalization is host-only, idempotent, locked, and immutable.
 
-Policy enforced by the migration: one active invitation at a time; a replacement revokes the predecessor under a session-row lock; invitations expire after 24 hours; invitation creation/revocation and joining are allowed only in `DRAFT` or `LOBBY`; readiness changes are allowed only in `LOBBY`; and start requires the host, at least two current participants, and every participant `READY`. Private ballots, voting progress, result selection, realtime, and PWA work are untouched.
+## Recovery and PWA
 
-## Current Experience batch
+Authenticated bootstrap refreshes on reconnect, visibility, and a visible-tab interval while preserving a last safe room view after a background failure. The PWA provides standalone metadata, icons, and an offline shell. Its worker bypasses `/api/*`; authenticated rooms, invitations, ballots, credentials, and results are never cached.
 
-Branch: `experience/voting-results-ui-v1`
-Worktree: `C:\Users\zrowe\Documents\Codex\2026-07-27\vibevote-experience-voting-results`
+## Verification and deployment caveats
 
-The authenticated room now presents a complete private ballot during `VOTING`, sends the typed same-origin ballot request, and shows aggregate progress only. The host can finalize through the server-only authority; the locked winner is then available to both host and guests through authenticated bootstrap after refresh. The historical `/room/[sessionId]/result` route now uses the same `RoomBootstrap`, not a mock result screen. Browser state still never receives participant credentials, raw ballots, token hashes, or private result-selection data.
+Before release, run fresh `supabase db reset --local`, every focused SQL authorization/policy fixture through `psql`, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and local `pnpm test:e2e` with isolated Supabase on ports `55320-55329`. The server requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, durable rate-limit configuration, and a trusted `VIBEVOTE_APP_ORIGIN`; none may be public. Local E2E must use isolated credentials only.
 
-## Verification
+## Deferred product scope
 
-Completed before this batch: fresh `supabase db reset --local` replayed all migrations; the focused SQL authorization fixtures passed through `psql` (the bundled `supabase test db` runner cannot execute these assertion-style, transaction-only fixtures because it requires TAP output). Final Experience verification passed: `pnpm format:check`; `pnpm lint`; `pnpm typecheck`; `pnpm test` (25 files passed, 1 skipped; 133 tests passed, 3 skipped); `pnpm build`; and `pnpm test:e2e` (2/2 passed, including isolated two-browser private ballots, aggregate-only progress, server finalization, and the same result after host/guest refresh). `git diff --check` and the focused production-room mock-boundary scan both passed.
-
-The migration serializes invitation replacement, readiness, and start decisions by locking the session row. The focused SQL fixture covers unauthorized invitation/revocation, expired/revoked and late joins, invalid session states, self-only readiness, privileges, and atomic start behavior.
-
-## Deployment/configuration caveats
-
-Existing production/preview public APIs still fail closed unless their server-only Supabase and durable rate-limit configuration is present. This batch also requires the existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` only on the server; neither may be made public. Local live E2E requires the isolated Supabase stack on ports `55320-55329`, plus `VIBEVOTE_APP_ORIGIN=http://127.0.0.1:3000`; it must not use production credentials. Apply migrations and complete local reset/RLS proof before deployment.
-
-## Next dependency
-
-PR #17 (private voting/result UI) and PR #18 (safe authenticated recovery) are merged. This PWA/beta batch adds standalone install metadata, local app icons, and an offline shell. Its service worker caches only the public shell and bypasses `/api/*`; it does not cache authenticated room responses, credentials, invitations, ballots, or results. Final local verification passed: format, lint, typecheck, 27 unit files passed/1 skipped (136 passed/3 skipped), production build, and 3/3 E2E including manifest and service-worker privacy assertions. The next dependency is optional push-based realtime; the existing authenticated recovery loop remains the safe source-of-truth refresh path.
+Accounts, discovery, history, groups, payments, provider integrations, AI recommendations, native clients, retention, and monetization are not part of the validated first-session product. Push realtime is optional; authenticated recovery remains the source-of-truth refresh mechanism.
