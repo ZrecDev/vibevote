@@ -85,7 +85,7 @@ test('host and guest bootstrap independently through browser-managed cookies', a
     expect(new URL(page.url()).search).toBe('');
     expect(new URL(page.url()).hash).toBe('');
   }
-  expect(apiRequests).toHaveLength(6);
+  expect(apiRequests).toHaveLength(9);
   await hostContext.close();
   await guestContext.close();
 });
