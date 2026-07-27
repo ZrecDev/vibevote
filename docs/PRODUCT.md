@@ -19,7 +19,7 @@ VibeVote is a mobile-first, category-independent group decision utility: create 
 
 ## First milestone
 
-Two people open VibeVote on separate devices, join the same custom decision room, vote privately, and receive the same server-locked result. This repository-foundation task does **not** complete that milestone.
+Two people can open VibeVote on separate devices, join the same custom decision room, vote privately, and receive the same server-locked result. This is verified by the isolated two-browser E2E flow. Authenticated recovery refreshes shared room state, and the app is installable with a privacy-safe offline shell.
 
 ## Scope sequence
 
@@ -30,9 +30,9 @@ Two people open VibeVote on separate devices, join the same custom decision room
 5. Realtime and recovery.
 6. PWA/beta quality, then discovery, retention, and monetization only after the core flow is reliable.
 
-## Non-goals for the foundation
+## Deferred beyond the first milestone
 
-No authentication, accounts, real sessions, votes, realtime, full production database schema, provider APIs, payments, AI recommendations, native applications, public social features, production deployment, or remote Supabase changes.
+Accounts, provider APIs, payments, AI recommendations, native applications, public social features, discovery, retention, and monetization are not part of the first milestone. Push-based realtime is optional; authenticated recovery remains the source-of-truth refresh path.
 
 ## Privacy and security baseline
 

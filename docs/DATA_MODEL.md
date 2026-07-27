@@ -1,8 +1,8 @@
-# Data Model (future implementation)
+# Data Model (v1 implementation)
 
-No production tables are created in this foundation. The provisional public vocabulary is in `@vibevote/contracts`: category, mode, session status, participant, option, session, public room state, and result summary.
+The v1 public vocabulary is in `@vibevote/contracts`: category, mode, session status, participant, option, session, public room state, aggregate voting progress, and result summary.
 
-Future persistence will separate public room state from private ballots and credentials. Invitation tokens are hashed where feasible; individual vote records are never included in public room responses or realtime payloads. Migration names follow `YYYYMMDDHHMMSS_short_snake_case.sql`; add rather than alter applied migrations and document forward repair.
+Persistence separates public room state from private ballots and credentials. Invitation tokens are hashed; individual vote records are never included in public room responses, recovery payloads, logs, or PWA caches. Migration names follow `YYYYMMDDHHMMSS_short_snake_case.sql`; add rather than alter applied migrations and document forward repair.
 
 Generate types after schema changes with `supabase gen types typescript --local > packages/contracts/src/database.generated.ts`; review the generated diff separately and do not hand-edit it.
 
@@ -21,18 +21,18 @@ Participants have an ID, temporary display name, role (`HOST` or `GUEST`), and r
 | Host room           | Participant room plus non-authoritative UI capability hints                             | Token hashes, ballots, RNG seed, server permission state                                          |
 | Server-only session | Internal invitation-token hash and RNG seed alongside session data                      | Any client, realtime, fixture, or safe API response                                               |
 
-## Provisional choices and open questions
+## v1 policy
 
-- `WAITING` and `READY` replace the former boolean ready vocabulary; shared approval is needed before persistence.
-- The contract records transition vocabulary but does not declare a transition matrix. The server will own validation and enforcement.
-- Invitation expiry is nullable in the client-safe response pending product policy for default lifetime.
+- `WAITING` and `READY` replace the former boolean ready vocabulary.
+- The server owns transition validation and enforcement.
+- Active invitations expire 24 hours after creation and may be replaced only by the host in `DRAFT` or `LOBBY`.
 - The invite response may expose a shareable URL/token representation to its intended host client, but never its stored hash.
 
 ## Contract-only collaboration workflow vocabulary
 
 The shared collaboration contract defines client-safe shapes for a host-created share invitation, a participant readiness update, a complete private ballot submission, aggregate-only voting progress, and a final result receipt. An invitation sharing response may expose its raw URL to the host but never a token hash. A ballot request is participant-to-server input only and contains one value per option; it is never part of room state, a result receipt, fixtures intended for public state, or realtime payloads. Progress contains only total and finished participant counts, never identities attached to completion. The result receipt is client-safe and readable; the server and database, not the contract, enforce its immutability.
 
-Invitation expiration defaults, revocation behavior, transition authority, readiness quorum, late-join policy, ballot replacement semantics, and the decision algorithm remain intentionally unresolved product/server policy. Platform and Experience work must not begin until these schemas receive shared review.
+Invitation expiry, revocation, readiness quorum, late-join rejection, ballot replacement during `VOTING`, and finalization are enforced by service-role-only RPCs. The existing v1 decision method excludes vetoed options and uses aggregate private preferences; individual ballot records never leave the database.
 
 ## Session persistence foundation
 
@@ -42,7 +42,7 @@ Migration `20260724172000_create_session_persistence_foundation.sql` adds `decis
 
 Migration `20260724190000_add_session_operations_v1.sql` adds `create_decision_session_v1` and `join_decision_session_v1`. Create validates the request at the database boundary, then atomically inserts the session, exactly one host, ordered two-to-twelve options, and an invitation-token hash before asserting the option count. Join atomically resolves a non-revoked, non-expired invitation and inserts one guest with only a guest-access-token hash. Any failure rolls back the complete RPC transaction; no partial session, option, invitation, or participant is retained.
 
-Raw invitation material is delivered once through the safe `inviteUrl` response and is never persisted. RPC results include safe room data and identifiers, never invitation or participant hashes. Revoked, expired, and missing invitations share a safe failure path. Frontend integration, realtime updates, ballots, voting, and result persistence remain future work.
+Raw invitation material is delivered once through the safe `inviteUrl` response and is never persisted. RPC results include safe room data and identifiers, never invitation or participant hashes. Revoked, expired, and missing invitations share a safe failure path. Authenticated UI, aggregate-only ballot progress, immutable result persistence, recovery refresh, and a PWA shell are shipped.
 
 ## Unified participant credentials
 
@@ -52,7 +52,7 @@ Non-null participant hashes are protected by a partial unique index, while legac
 
 ## HTTP credential lifecycle
 
-The HTTP create adapter builds the one-time invitation URL only from trusted `VIBEVOTE_APP_ORIGIN`. Create and join place their server-internal raw participant token in the scoped `vibevote_participant_v1` HttpOnly session cookie and return only safe public room responses. `GET /api/v1/sessions/{sessionId}` authenticates with that cookie and returns either safe host or guest bootstrap state. Frontend session bootstrap integration, authenticated follow-up adapters, realtime, ballots, voting, and results remain future work.
+The HTTP create adapter builds the one-time invitation URL only from trusted `VIBEVOTE_APP_ORIGIN`. Create and join place their server-internal raw participant token in the scoped `vibevote_participant_v1` HttpOnly session cookie and return only safe public room responses. `GET /api/v1/sessions/{sessionId}` authenticates with that cookie and returns either safe host or guest bootstrap state. Typed same-origin adapters support invitation replacement, readiness, voting start, private ballot submission, and finalization. The client uses this safe bootstrap response for recovery without storing credentials in browser state.
 
 ## Durable session rate limiting
 
