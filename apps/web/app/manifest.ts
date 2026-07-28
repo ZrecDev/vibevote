@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'A fair group decision, in minutes.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#f8f5ef',
-    theme_color: '#d96545',
+    background_color: '#f5f5f0',
+    theme_color: '#5b57e8',
     icons: [
       { src: '/icons/vibevote.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
       {
