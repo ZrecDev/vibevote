@@ -47,6 +47,13 @@ const rateLimitResponseSchema = z
 
 const defaultTimeoutMs = 1_000;
 
+function unavailable(reason: string): RateLimitResult {
+  // Keep diagnostics categorical: never attach request data, addresses, key
+  // material, provider errors, or payloads to production logs.
+  console.error(`[vibevote:rate-limit] unavailable:${reason}`);
+  return 'unavailable';
+}
+
 function namespaceFor(environment: z.infer<typeof rateLimitEnvironmentSchema>) {
   if (!environment.VERCEL && !environment.VERCEL_ENV && !environment.VERCEL_PROJECT_ID) {
     if (environment.NODE_ENV === 'test') return 'test';
@@ -119,19 +126,24 @@ export async function checkSessionRateLimit(
   } = {},
 ): Promise<RateLimitResult> {
   const parsedEnvironment = rateLimitEnvironmentSchema.safeParse(environment);
-  if (!parsedEnvironment.success) return 'unavailable';
+  if (!parsedEnvironment.success) return unavailable('environment');
 
   const namespace = namespaceFor(parsedEnvironment.data);
   if (namespace === 'development' || namespace === 'test') return 'allowed';
-  if (!namespace) return 'unavailable';
+  if (!namespace) return unavailable('provider-namespace');
   const secret = rateLimitSecret(parsedEnvironment.data);
-  if (!secret) return 'unavailable';
+  if (!secret) return unavailable('signing-secret');
 
   const address = clientAddress(request);
-  if (!address) return 'unavailable';
+  if (!address) return unavailable('client-address');
 
+  let configuredClient: RateLimitClient;
   try {
-    const configuredClient = client ?? createServiceRoleClient(environment);
+    configuredClient = client ?? createServiceRoleClient(environment);
+  } catch {
+    return unavailable('database-configuration');
+  }
+  try {
     const policyConfig = sessionRateLimitPolicies[policy];
     const response = await withTimeout<{ data: unknown; error: unknown }>(
       configuredClient.rpc('check_session_rate_limit_v1', {
@@ -142,11 +154,12 @@ export async function checkSessionRateLimit(
       }) as unknown as Promise<{ data: unknown; error: unknown }>,
       parsedEnvironment.data.VIBEVOTE_RATE_LIMIT_TIMEOUT_MS ?? defaultTimeoutMs,
     );
-    if (!response || response.error) return 'unavailable';
+    if (!response) return unavailable('provider-timeout');
+    if (response.error) return unavailable('provider-response');
     const result = rateLimitResponseSchema.safeParse(response.data);
-    if (!result.success) return 'unavailable';
+    if (!result.success) return unavailable('provider-contract');
     return result.data[0]!.allowed ? 'allowed' : 'denied';
   } catch {
-    return 'unavailable';
+    return unavailable('provider-request');
   }
 }
