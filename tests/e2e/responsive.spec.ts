@@ -53,7 +53,7 @@ test.describe('desktop and short-landscape layouts', () => {
   test('keeps the landing hierarchy balanced on desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: /find the choice everyone/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /decide together/i })).toBeVisible();
     await expect(page.getByLabel('Example decision room')).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });

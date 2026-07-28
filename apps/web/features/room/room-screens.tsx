@@ -202,7 +202,6 @@ export function LobbyScreen({
           {isHost && <span className="host-badge">You’re hosting</span>}
         </div>
         <h1 className="room-title">{room.session.title}</h1>
-        <p>Find the choice the whole group can genuinely get behind.</p>
         <div className="room-meta">
           <span>
             <VoteIcon width="16" height="16" />
@@ -242,8 +241,7 @@ export function LobbyScreen({
                   <LockIcon />
                 </span>
                 <div>
-                  <p className="eyebrow">Private ballot</p>
-                  <h2>How do these options feel?</h2>
+                  <h2>Your vote</h2>
                   <p className="muted">
                     {room.session.mode === 'INSTANT_MATCH'
                       ? 'A match needs every person to mark it Love or Fine.'
@@ -292,7 +290,7 @@ export function LobbyScreen({
               <div className="ballot-actions">
                 <div className="privacy-inline">
                   <LockIcon width="16" height="16" />
-                  Only completion progress is shared
+                  Private ballot
                 </div>
                 <Button disabled={submitting} onClick={() => void submitVotes()}>
                   {submitting ? (
@@ -318,11 +316,7 @@ export function LobbyScreen({
 
           <Card className="options-card">
             <div className="card-heading card-heading--split">
-              <div>
-                <p className="eyebrow">The short list</p>
-                <h2>Options everyone considers</h2>
-                <p className="muted">The list is shared. Each person’s opinion is not.</p>
-              </div>
+              <h2>Options</h2>
               <span className="count-pill">
                 {options.filter((option) => option.eligible).length} active
               </span>
@@ -356,9 +350,7 @@ export function LobbyScreen({
               ))}
             </div>
             {isHost && lobby && (
-              <p className="constraint-note">
-                Exclude anything that fails a hard constraint. At least one option must stay active.
-              </p>
+              <p className="constraint-note">At least one option must stay active.</p>
             )}
           </Card>
         </div>
@@ -367,12 +359,8 @@ export function LobbyScreen({
           <Card className="people-card">
             <div className="card-heading card-heading--split">
               <div>
-                <p className="eyebrow">In the room</p>
-                <h2>
-                  {participants.length === 1
-                    ? 'Just you, for now'
-                    : `${participants.length} people`}
-                </h2>
+                <h2>People</h2>
+                <p className="muted">{participants.length} in this room</p>
               </div>
               <span className="card-icon card-icon--small">
                 <UsersIcon width="18" height="18" />
@@ -415,9 +403,7 @@ export function LobbyScreen({
                   <ShareIcon />
                 </span>
                 <div>
-                  <p className="eyebrow">Invite the group</p>
-                  <h2>Share one secure link</h2>
-                  <p className="muted">Creating a new link replaces the previous one.</p>
+                  <h2>Invite</h2>
                 </div>
               </div>
               {inviteUrl ? (
@@ -478,10 +464,10 @@ export function LobbyScreen({
       {isHost && lobby && participants.length >= 2 && (
         <div className="room-action-dock">
           <div>
-            <strong>{everyoneReady ? 'Everyone is ready.' : 'Waiting for the room.'}</strong>
+            <strong>{everyoneReady ? 'Everyone is ready.' : 'Not ready yet.'}</strong>
             <span>
               {everyoneReady
-                ? 'You can start private voting.'
+                ? 'Start when you are ready.'
                 : `${participants.filter((participant) => participant.readiness === 'READY').length} of ${participants.length} ready`}
             </span>
           </div>
