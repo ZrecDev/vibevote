@@ -8,7 +8,7 @@ import {
   decisionModeSchema,
 } from '@vibevote/contracts';
 import { AppShell } from '@/components/app-shell';
-import { CheckIcon, LockIcon, PlusIcon, SparkIcon, TrashIcon, UsersIcon } from '@/components/icons';
+import { PlusIcon, TrashIcon } from '@/components/icons';
 import { Button, Card, Input } from '@/components/ui';
 import { createSession, SessionClientError } from '@/features/session/session-client';
 
@@ -26,9 +26,9 @@ const modeLabels = {
   CHAOS: 'Chaos Pick',
 } as const;
 const modeDescriptions = {
-  INSTANT_MATCH: 'Choose only when everyone is genuinely on board.',
-  BEST_FIT: 'Balance the whole group’s preferences for the strongest fit.',
-  CHAOS: 'Pick fairly from the options the group is willing to accept.',
+  INSTANT_MATCH: 'Everyone must accept the winner.',
+  BEST_FIT: 'Balances the group’s preferences.',
+  CHAOS: 'Picks fairly from accepted options.',
 } as const;
 
 export default function CreatePage() {
@@ -86,14 +86,8 @@ export default function CreatePage() {
   return (
     <AppShell>
       <section className="page-intro page-intro--compact">
-        <div className="hero-badge">
-          <SparkIcon width="16" height="16" />
-          New group decision
-        </div>
-        <h1 className="page-title">Set up the choice.</h1>
-        <p className="lede">
-          Start with a clear question and the real options. You can invite everyone next.
-        </p>
+        <h1 className="page-title">New decision</h1>
+        <p className="lede">Add a question and a few options.</p>
       </section>
 
       <div className="create-layout">
@@ -101,11 +95,7 @@ export default function CreatePage() {
           <form className="stack form-stack" onSubmit={submit} aria-busy={pending} noValidate>
             <div className="form-section">
               <div className="form-section__heading">
-                <span className="form-step">01</span>
-                <div>
-                  <h2>Decision details</h2>
-                  <p>Give the room enough context to feel obvious.</p>
-                </div>
+                <h2>Details</h2>
               </div>
               <div className="form-grid">
                 <label className="form-label" htmlFor="host-name">
@@ -113,7 +103,7 @@ export default function CreatePage() {
                   <Input
                     id="host-name"
                     autoComplete="name"
-                    placeholder="How the group will see you"
+                    placeholder="e.g. Alex"
                     value={form.hostDisplayName}
                     onChange={(event) => update('hostDisplayName', event.target.value)}
                     aria-invalid={invalidFields.includes('hostDisplayName')}
@@ -154,7 +144,7 @@ export default function CreatePage() {
                   </select>
                 </label>
                 <label className="form-label" htmlFor="decision-mode">
-                  <span>How should the group decide?</span>
+                  <span>Decision mode</span>
                   <select
                     className="select"
                     id="decision-mode"
@@ -181,20 +171,14 @@ export default function CreatePage() {
             <fieldset className="form-section option-fieldset">
               <legend className="sr-only">Options to consider</legend>
               <div className="form-section__heading form-section__heading--split">
-                <div className="form-heading-group">
-                  <span className="form-step">02</span>
-                  <div>
-                    <h2>Options to consider</h2>
-                    <p>Add between two and twelve clear choices.</p>
-                  </div>
-                </div>
+                <h2>Options</h2>
                 <span className="count-pill">{form.options.length} / 12</span>
               </div>
               <div className="option-editor-list">
                 {form.options.map((option, index) => (
                   <div className="option-editor" key={index}>
                     <span className="option-index" aria-hidden="true">
-                      {String(index + 1).padStart(2, '0')}
+                      {index + 1}
                     </span>
                     <label className="sr-only" htmlFor={`option-${index}`}>
                       Option {index + 1}
@@ -202,13 +186,7 @@ export default function CreatePage() {
                     <Input
                       id={`option-${index}`}
                       aria-label={`Option ${index + 1}`}
-                      placeholder={
-                        index === 0
-                          ? 'First choice'
-                          : index === 1
-                            ? 'Second choice'
-                            : 'Another choice'
-                      }
+                      placeholder={index < 2 ? `Option ${index + 1}` : 'Another option'}
                       value={option}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -271,58 +249,20 @@ export default function CreatePage() {
               </p>
             )}
             <div className="form-submit">
-              <div className="submit-note">
-                <LockIcon width="17" height="17" />
-                Private room · no account required
-              </div>
+              <div className="submit-note">Private room</div>
               <Button className="button--large" type="submit" disabled={pending}>
                 {pending ? (
                   <>
                     <span className="spinner" aria-hidden="true" />
-                    Creating your room…
+                    Creating room…
                   </>
                 ) : (
-                  <>
-                    Create room
-                    <CheckIcon width="19" height="19" />
-                  </>
+                  'Create room'
                 )}
               </Button>
             </div>
           </form>
         </Card>
-
-        <aside className="setup-aside" aria-label="What happens next">
-          <p className="eyebrow">Then what?</p>
-          <h2>You stay in control.</h2>
-          <div className="aside-point">
-            <span>
-              <UsersIcon />
-            </span>
-            <div>
-              <strong>Invite your group</strong>
-              <p>Share one private link when the room is ready.</p>
-            </div>
-          </div>
-          <div className="aside-point">
-            <span>
-              <CheckIcon />
-            </span>
-            <div>
-              <strong>Check readiness</strong>
-              <p>Voting starts only after everyone says they are ready.</p>
-            </div>
-          </div>
-          <div className="aside-point">
-            <span>
-              <LockIcon />
-            </span>
-            <div>
-              <strong>Keep votes private</strong>
-              <p>Individual ballots are never shown to the room.</p>
-            </div>
-          </div>
-        </aside>
       </div>
     </AppShell>
   );

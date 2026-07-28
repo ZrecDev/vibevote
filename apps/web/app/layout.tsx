@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   },
   description: 'Private group decisions, without the group chat spiral.',
   applicationName: 'VibeVote',
+  icons: {
+    icon: '/icons/vibevote.svg',
+    shortcut: '/icons/vibevote.svg',
+    apple: '/icons/vibevote.svg',
+  },
   appleWebApp: { capable: true, title: 'VibeVote', statusBarStyle: 'default' },
 };
 

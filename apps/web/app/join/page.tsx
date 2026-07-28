@@ -4,7 +4,6 @@ import { useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { joinSessionRequestSchema } from '@vibevote/contracts';
 import { AppShell } from '@/components/app-shell';
-import { ArrowIcon, LockIcon, UsersIcon } from '@/components/icons';
 import { Button, Card, Input } from '@/components/ui';
 import { joinSession, SessionClientError } from '@/features/session/session-client';
 
@@ -41,7 +40,7 @@ export default function JoinPage() {
       setError(
         reason instanceof SessionClientError
           ? reason.status === 503
-            ? 'VibeVote cannot reach the room service right now. Your invitation is safe—please try again shortly.'
+            ? 'VibeVote cannot reach the room service right now. Please try again shortly.'
             : reason.message
           : 'Something went wrong. Please check the invitation and try again.',
       );
@@ -55,30 +54,16 @@ export default function JoinPage() {
     <AppShell>
       <div className="join-layout">
         <section className="join-copy">
-          <div className="hero-badge">
-            <UsersIcon width="16" height="16" />
-            Private decision room
-          </div>
-          <h1 className="page-title">Your voice belongs in the room.</h1>
-          <p className="lede">
-            Join with the name your group knows. No account, profile, or public activity.
-          </p>
-          <div className="join-assurance">
-            <LockIcon width="18" height="18" />
-            <span>
-              <strong>Your votes stay private.</strong>
-              Only shared readiness and the final choice appear to the group.
-            </span>
-          </div>
+          <h1 className="page-title">Join room</h1>
+          <p className="lede">Enter the name your group knows.</p>
         </section>
         <Card className="join-card">
           <div className="join-card__heading">
             <span className={`invite-indicator ${token ? 'invite-indicator--valid' : ''}`}>
               <span aria-hidden="true" />
-              {token ? 'Invitation ready' : 'Invitation needed'}
+              {token ? 'Valid invitation' : 'Invitation needed'}
             </span>
-            <h2>How should we call you?</h2>
-            <p className="muted">This name appears only inside this room.</p>
+            <h2>Your name</h2>
           </div>
           <form className="stack form-stack" onSubmit={submit} aria-busy={pending} noValidate>
             <label className="form-label" htmlFor="join-name">
@@ -95,7 +80,7 @@ export default function JoinPage() {
                 aria-describedby={error ? 'join-error' : 'join-name-help'}
               />
               <small className="field-help" id="join-name-help">
-                No email or password required.
+                Visible to this room only.
               </small>
             </label>
             {error && (
@@ -116,10 +101,7 @@ export default function JoinPage() {
                   Joining room…
                 </>
               ) : (
-                <>
-                  Join room
-                  <ArrowIcon width="18" height="18" />
-                </>
+                'Join room'
               )}
             </Button>
           </form>
