@@ -14,6 +14,10 @@ const host = {
   kind: 'HOST' as const,
   session: {
     ...fixtures.lobbyRoom,
+    participants: fixtures.lobbyRoom.participants.map((participant) => ({
+      ...participant,
+      readiness: 'READY' as const,
+    })),
     currentParticipantId: fixtures.lobbyRoom.participants[0]!.id,
     hostControls: { canStartVoting: true, canCancelSession: false },
   },

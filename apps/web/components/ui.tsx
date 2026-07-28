@@ -7,18 +7,18 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'quiet' | 'danger';
 }) {
-  return <button className={`button button--${variant} ${className}`} {...props} />;
+  return <button className={`button button--${variant} ${className}`.trim()} {...props} />;
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className="input" {...props} />;
+export function Input({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return <input className={`input ${className}`.trim()} {...props} />;
 }
 
 export function Card({
   children,
   className = '',
 }: Readonly<{ children: React.ReactNode; className?: string }>) {
-  return <section className={`card ${className}`}>{children}</section>;
+  return <section className={`card ${className}`.trim()}>{children}</section>;
 }
 
 export function DialogPlaceholder({

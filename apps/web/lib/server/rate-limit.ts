@@ -26,6 +26,7 @@ const rateLimitEnvironmentSchema = z.object({
     .regex(/^prj_[A-Za-z0-9]+$/)
     .optional(),
   VIBEVOTE_RATE_LIMIT_KEY_SECRET: z.string().min(32).max(512).optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   VIBEVOTE_RATE_LIMIT_TIMEOUT_MS: z
     .string()
     .regex(/^\d+$/)
@@ -51,14 +52,17 @@ function namespaceFor(environment: z.infer<typeof rateLimitEnvironmentSchema>) {
     if (environment.NODE_ENV === 'test') return 'test';
     if (environment.NODE_ENV === 'development') return 'development';
   }
-  if (
-    environment.VERCEL !== '1' ||
-    !environment.VERCEL_ENV ||
-    !environment.VERCEL_PROJECT_ID ||
-    !environment.VIBEVOTE_RATE_LIMIT_KEY_SECRET
-  )
+  if (environment.VERCEL !== '1' || !environment.VERCEL_ENV || !environment.VERCEL_PROJECT_ID)
     return undefined;
   return `${environment.VERCEL_ENV}:${environment.VERCEL_PROJECT_ID}`;
+}
+
+function rateLimitSecret(environment: z.infer<typeof rateLimitEnvironmentSchema>) {
+  if (environment.VIBEVOTE_RATE_LIMIT_KEY_SECRET) return environment.VIBEVOTE_RATE_LIMIT_KEY_SECRET;
+  if (!environment.SUPABASE_SERVICE_ROLE_KEY) return undefined;
+  return createHmac('sha256', environment.SUPABASE_SERVICE_ROLE_KEY)
+    .update('vibevote-rate-limit-key-secret-v1')
+    .digest('hex');
 }
 
 function clientAddress(request: Request) {
@@ -120,6 +124,8 @@ export async function checkSessionRateLimit(
   const namespace = namespaceFor(parsedEnvironment.data);
   if (namespace === 'development' || namespace === 'test') return 'allowed';
   if (!namespace) return 'unavailable';
+  const secret = rateLimitSecret(parsedEnvironment.data);
+  if (!secret) return 'unavailable';
 
   const address = clientAddress(request);
   if (!address) return 'unavailable';
@@ -130,12 +136,7 @@ export async function checkSessionRateLimit(
     const response = await withTimeout<{ data: unknown; error: unknown }>(
       configuredClient.rpc('check_session_rate_limit_v1', {
         p_namespace: namespace,
-        p_key_hash: hashedRateLimitKey(
-          namespace,
-          policy,
-          address,
-          parsedEnvironment.data.VIBEVOTE_RATE_LIMIT_KEY_SECRET!,
-        ),
+        p_key_hash: hashedRateLimitKey(namespace, policy, address, secret),
         p_limit: policyConfig.limit,
         p_window_seconds: policyConfig.windowSeconds,
       }) as unknown as Promise<{ data: unknown; error: unknown }>,

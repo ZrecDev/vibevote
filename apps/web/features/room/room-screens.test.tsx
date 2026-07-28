@@ -60,7 +60,8 @@ describe('LobbyScreen invitation and readiness controls', () => {
     updateCurrentReadiness.mockResolvedValue({
       participant: { ...host.participants[0], readiness: 'WAITING' },
     });
-    render(<LobbyScreen room={host} isHost />);
+    const onRefresh = vi.fn();
+    render(<LobbyScreen room={host} isHost onRefresh={onRefresh} />);
     fireEvent.click(screen.getByRole('button', { name: /create share link/i }));
     await screen.findByDisplayValue(/invite=share-token/);
     expect(createInvitation).toHaveBeenCalledWith(host.session.id);
@@ -68,7 +69,7 @@ describe('LobbyScreen invitation and readiness controls', () => {
     await waitFor(() =>
       expect(updateCurrentReadiness).toHaveBeenCalledWith(host.session.id, 'WAITING'),
     );
-    expect(screen.getAllByText('Waiting')).toHaveLength(2);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('does not offer host invitation controls to a guest', () => {
@@ -77,21 +78,46 @@ describe('LobbyScreen invitation and readiness controls', () => {
   });
 
   it('lets a ready host request the guarded server transition and refresh the room', async () => {
+    const readyHost = {
+      ...host,
+      participants: host.participants.map((participant) => ({
+        ...participant,
+        readiness: 'READY' as const,
+      })),
+    };
     startLobbyVoting.mockResolvedValue({
       session: { ...host, session: { ...host.session, status: 'VOTING' } },
     });
     const onRefresh = vi.fn();
-    render(<LobbyScreen room={host} isHost onRefresh={onRefresh} />);
+    render(<LobbyScreen room={readyHost} isHost onRefresh={onRefresh} />);
     fireEvent.click(screen.getByRole('button', { name: /^start voting$/i }));
     await waitFor(() => expect(startLobbyVoting).toHaveBeenCalledWith(host.session.id));
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('synchronizes refreshed participants before enabling the host transition', async () => {
+    const soloHost = { ...host, participants: [host.participants[0]!] };
+    const readyHost = {
+      ...host,
+      participants: host.participants.map((participant) => ({
+        ...participant,
+        readiness: 'READY' as const,
+      })),
+    };
+    const { rerender } = render(<LobbyScreen room={soloHost} isHost />);
+    expect(screen.queryByRole('button', { name: /^start voting$/i })).toBeNull();
+    rerender(<LobbyScreen room={readyHost} isHost />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^start voting$/i })).toBeEnabled(),
+    );
   });
 
   it('lets only a host apply a safe eligibility constraint before voting', async () => {
     updateOptionEligibility.mockResolvedValue({
       option: { ...host.session.options[0], eligible: false },
     });
-    render(<LobbyScreen room={host} isHost />);
+    const onRefresh = vi.fn();
+    render(<LobbyScreen room={host} isHost onRefresh={onRefresh} />);
     fireEvent.click(screen.getAllByRole('button', { name: /^exclude$/i })[0]!);
     await waitFor(() =>
       expect(updateOptionEligibility).toHaveBeenCalledWith(
@@ -100,7 +126,7 @@ describe('LobbyScreen invitation and readiness controls', () => {
         false,
       ),
     );
-    expect(screen.getByText('Excluded')).toBeVisible();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('submits a complete private ballot and lets only the host finalize the server result', async () => {
@@ -108,18 +134,18 @@ describe('LobbyScreen invitation and readiness controls', () => {
     submitPrivateBallot.mockResolvedValue({
       progress: { participantCount: 2, finishedParticipantCount: 1 },
     });
-    finalizeDecision.mockResolvedValue({
-      result: {
-        id: '550e8400-e29b-41d4-a716-446655440099',
-        sessionId: host.session.id,
-        winnerOptionId: host.session.options[0]!.id,
-        method: 'BEST_FIT',
-        explanation:
-          'Selected from aggregate private preferences; individual ballots are never revealed.',
-        finalizedAt: '2026-07-28T00:00:00.000Z',
-      },
-    });
-    render(<LobbyScreen room={votingHost} isHost />);
+    const finalResult = {
+      id: '550e8400-e29b-41d4-a716-446655440099',
+      sessionId: host.session.id,
+      winnerOptionId: host.session.options[0]!.id,
+      method: 'BEST_FIT' as const,
+      explanation:
+        'Selected from aggregate private preferences; individual ballots are never revealed.',
+      finalizedAt: '2026-07-28T00:00:00.000Z',
+    };
+    finalizeDecision.mockResolvedValue({ result: finalResult });
+    const onRefresh = vi.fn();
+    const { rerender } = render(<LobbyScreen room={votingHost} isHost onRefresh={onRefresh} />);
     fireEvent.change(screen.getByLabelText(`${host.session.options[0]!.label} vote`), {
       target: { value: 'LOVE' },
     });
@@ -132,7 +158,19 @@ describe('LobbyScreen invitation and readiness controls', () => {
     );
     expect(screen.getByRole('status')).toHaveTextContent('1 of 2 people have finished.');
     fireEvent.click(screen.getByRole('button', { name: /finalize decision/i }));
-    await screen.findByText('Decision locked');
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+    rerender(
+      <LobbyScreen
+        room={{
+          ...votingHost,
+          session: { ...votingHost.session, status: 'DECIDED' as const },
+          result: finalResult,
+        }}
+        isHost
+        onRefresh={onRefresh}
+      />,
+    );
+    expect(screen.getByText('Decision locked')).toBeVisible();
     expect(screen.getByRole('heading', { name: host.session.options[0]!.label })).toBeVisible();
     expect(screen.queryByRole('button', { name: /submit private ballot/i })).toBeNull();
 

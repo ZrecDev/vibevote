@@ -2,11 +2,23 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { fixtures } from '@vibevote/contracts';
 import CreatePage from './page';
 
-const { push, createSession } = vi.hoisted(() => ({ push: vi.fn(), createSession: vi.fn() }));
+const { push, createSession, MockSessionClientError } = vi.hoisted(() => ({
+  push: vi.fn(),
+  createSession: vi.fn(),
+  MockSessionClientError: class MockSessionClientError extends Error {
+    constructor(
+      public readonly kind: 'network' | 'malformed' | 'server',
+      public readonly status?: number,
+      message = 'Something went wrong. Please try again.',
+    ) {
+      super(message);
+    }
+  },
+}));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/features/session/session-client', () => ({
   createSession,
-  SessionClientError: class SessionClientError extends Error {},
+  SessionClientError: MockSessionClientError,
 }));
 
 function fillValidForm() {
@@ -29,29 +41,28 @@ describe('CreatePage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/complete your name/i);
     fireEvent.click(screen.getByRole('button', { name: /add option/i }));
     expect(screen.getByLabelText('Option 3')).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0]!);
+    fireEvent.click(screen.getAllByRole('button', { name: /remove option/i })[0]!);
     expect(screen.getByLabelText('Option 1')).toBeInTheDocument();
     expect(screen.getByLabelText('Your name')).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByLabelText('Your name')).toHaveAttribute('aria-describedby', 'create-error');
     expect(screen.getByRole('combobox', { name: 'Category' })).toHaveTextContent(
-      'EATDOWATCHCUSTOM',
+      'Food & drinkThings to doSomething to watchSomething else',
     );
     expect(screen.getByRole('combobox', { name: 'Decision mode' })).toHaveTextContent(
-      'INSTANT_MATCHBEST_FITCHAOS',
+      'Instant MatchBest FitChaos Pick',
     );
   });
 
   it('enforces the twelve-option limit while retaining the two-option minimum', () => {
-    render(<CreatePage />);
-    for (let index = 3; index <= 12; index += 1) {
-      fireEvent.click(screen.getByRole('button', { name: /add option/i }));
-      expect(screen.getByLabelText(`Option ${index}`)).toBeInTheDocument();
-    }
+    const { container } = render(<CreatePage />);
+    const addOption = screen.getByRole('button', { name: /add option/i });
+    for (let index = 3; index <= 12; index += 1) fireEvent.click(addOption);
+    expect(screen.getByLabelText('Option 12')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add option/i })).toBeNull();
     for (let index = 0; index < 10; index += 1) {
-      fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0]!);
+      fireEvent.click(container.querySelector<HTMLButtonElement>('[aria-label^="Remove option"]')!);
     }
-    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /remove option/i })).toBeNull();
     expect(screen.getByLabelText('Option 2')).toBeInTheDocument();
   });
   it('submits the contract payload once and navigates with the returned ID', async () => {
@@ -98,5 +109,19 @@ describe('CreatePage', () => {
     );
     expect(screen.getByLabelText('Your name')).toHaveValue('Alex');
     expect(screen.queryByText(/internal secret/i)).not.toBeInTheDocument();
+  });
+
+  it('explains a temporary service outage without clearing the setup', async () => {
+    createSession.mockRejectedValue(
+      new MockSessionClientError('server', 503, 'Service is unavailable.'),
+    );
+    render(<CreatePage />);
+    fillValidForm();
+    fireEvent.click(screen.getByRole('button', { name: /create room/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/cannot reach the room service/i),
+    );
+    expect(screen.getByLabelText('What are you deciding?')).toHaveValue('Dinner');
+    expect(screen.getByRole('button', { name: /create room/i })).toBeEnabled();
   });
 });

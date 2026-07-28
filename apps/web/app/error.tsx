@@ -1,7 +1,6 @@
 'use client';
 import { useEffect } from 'react';
 import { AppShell } from '@/components/app-shell';
-import { Button } from '@/components/ui';
 import { RoomState } from '@/features/room/room-screens';
 export default function GlobalError({
   error,
@@ -11,13 +10,8 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
   return (
-    <html lang="en">
-      <body>
-        <AppShell>
-          <RoomState kind="error" />
-          <Button onClick={reset}>Try again</Button>
-        </AppShell>
-      </body>
-    </html>
+    <AppShell>
+      <RoomState kind="error" onRetry={reset} />
+    </AppShell>
   );
 }
