@@ -1,15 +1,20 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const hostedBaseURL = process.env.VIBEVOTE_E2E_BASE_URL?.trim();
+const baseURL = hostedBaseURL || 'http://127.0.0.1:3000';
+
 export default defineConfig({
   testDir: './tests/e2e',
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL,
     ...devices['iPhone 13'],
     browserName: 'chromium',
   },
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: hostedBaseURL
+    ? undefined
+    : {
+        command: 'pnpm dev',
+        url: baseURL,
+        reuseExistingServer: !process.env.CI,
+      },
 });

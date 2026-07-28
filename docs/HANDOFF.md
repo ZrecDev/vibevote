@@ -2,7 +2,7 @@
 
 ## Released v1 milestone
 
-PRs #7 through #26 are merged into `main`. The production room path remains
+PRs #7 through #28 are merged into `main`. The production room path remains
 `room page -> RoomBootstrap -> typed session client -> LobbyScreen({ room, isHost })`; a focused
 static scan and its regression test both confirm that this module graph has no path to `mockRoom`
 or mock-result modules.
@@ -13,14 +13,16 @@ hashed, one-active-at-a-time, and expire after 24 hours. Participant credentials
 cookies and never enter browser state, logs, room projections, realtime-shaped recovery data, or
 PWA caches.
 
-## UI and production-recovery batch
+## UI and production release
 
-Branch `codex/ui-overhaul-create-room-v1` modernizes the landing, create, join, lobby, ballot,
-result, loading, error, and not-found experiences without changing the typed API contracts or
-decision policy. The layout is mobile-first, safe-area aware, keyboard-height tolerant, and
-explicitly tested for horizontal overflow at 320 px, 390 px, short landscape, and desktop widths.
-Room recovery now treats refreshed server projections as the single source of truth instead of
-leaving participant readiness, option eligibility, or result state stale in local component state.
+PR #27 modernizes the landing, create, join, lobby, ballot, result, loading, error, and not-found
+experiences without changing the typed API contracts or decision policy. The layout is
+mobile-first, safe-area aware, keyboard-height tolerant, and explicitly tested for horizontal
+overflow at 320 px, 390 px, short landscape, and desktop widths. Room recovery now treats
+refreshed server projections as the single source of truth instead of leaving participant
+readiness, option eligibility, or result state stale in local component state. PR #28 adds only
+fixed categorical diagnostics for rate-limit configuration/provider failures; it never logs
+addresses, credentials, request data, or payloads.
 
 The live create-room 503 had two deployment causes:
 
@@ -28,12 +30,13 @@ The live create-room 503 had two deployment causes:
    before any database operation.
 2. The linked production Supabase project had none of the repository's migrations.
 
-The 12 reviewed v1 migrations are now applied to the linked production Supabase project. The
-server still honors an explicit `VIBEVOTE_APP_ORIGIN`, but on Vercel it can also trust only
-provider-owned `VERCEL_PROJECT_PRODUCTION_URL`, `VERCEL_URL`, and preview branch URL values.
-Durable rate limiting remains fail-closed; when its dedicated HMAC secret is absent, it derives a
-domain-separated server-only key from `SUPABASE_SERVICE_ROLE_KEY` rather than falling back to
-process memory.
+The 12 reviewed v1 migrations are applied to the linked production Supabase project. Vercel now
+holds `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as sensitive, server-only variables scoped to
+Production and Preview. The server still honors an explicit `VIBEVOTE_APP_ORIGIN`, but on Vercel
+it can also trust only provider-owned `VERCEL_PROJECT_PRODUCTION_URL`, `VERCEL_URL`, and preview
+branch URL values. Durable rate limiting remains fail-closed; when its dedicated HMAC secret is
+absent, it derives a domain-separated server-only key from `SUPABASE_SERVICE_ROLE_KEY` rather than
+falling back to process memory.
 
 ## Decision and constraint policy
 
@@ -58,19 +61,30 @@ The UI and production-recovery batch passed:
 - The browser flows assert no horizontal overflow, no console or page errors, no browser-stored
   participant credential or invitation token, and no private ballot values in shared responses.
 - Focused production mock scan: 0 matches.
+- Production deployment `dpl_GZEHx6JZWazWrFP3exDZzrnytsJN` reached `READY` and serves the
+  canonical `https://vibevote.vercel.app` alias.
+- A canonical create-session probe returned 200 with `ok: true`, an
+  HttpOnly/Secure/SameSite=Lax participant cookie, and no credential/hash match in the response.
+- Hosted Playwright replay: 2 of 2 full independent host/guest flows passed at 390x844 mobile and
+  1280x800 desktop. Set `VIBEVOTE_E2E_BASE_URL=https://vibevote.vercel.app` to replay without
+  starting a local web server.
+- Deployment-scoped Vercel runtime logs showed the exercised create, invitation, join, readiness,
+  start, ballot, finalize, room, and bootstrap requests succeeding, with no error or fatal entries.
 
 ## Deployment and configuration caveats
 
-Production still requires server-only `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; neither may
-be exposed through `NEXT_PUBLIC_*`, browser state, responses, or logs. An explicit
-`VIBEVOTE_APP_ORIGIN` and `VIBEVOTE_RATE_LIMIT_KEY_SECRET` remain supported and preferred for
-non-Vercel deployments. The Vercel provider-origin fallback deliberately rejects arbitrary Host
-and forwarded-host headers.
+Production configuration is complete. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` must remain
+server-only and may never be exposed through `NEXT_PUBLIC_*`, browser state, responses, logs, or
+realtime-shaped payloads. Rotate the server key in Supabase and redeploy Vercel together if the
+credential changes. An explicit `VIBEVOTE_APP_ORIGIN` and `VIBEVOTE_RATE_LIMIT_KEY_SECRET` remain
+supported and preferred for non-Vercel deployments. The Vercel provider-origin fallback
+deliberately rejects arbitrary Host and forwarded-host headers.
 
-The current code batch must be deployed and the hosted create-to-result flow rerun before the 503
-recovery is considered released. The next dependency after that release is an Experience-owned
-realtime enhancement that consumes only authenticated room projections; it must not expose
-ballots, credentials, invitation tokens, token hashes, or selection seeds.
+There are no remaining release blockers for the validated two-participant v1. The recommended
+next optional Experience batch is push realtime on top of authenticated room projections so
+participants see safe readiness/state/result changes immediately instead of waiting for recovery
+polling or refresh. It must not expose ballots, credentials, invitation tokens, token hashes, or
+selection seeds.
 
 ## Deferred product scope
 
