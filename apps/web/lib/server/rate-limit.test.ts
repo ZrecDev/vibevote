@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkSessionRateLimit, sessionRateLimitPolicies } from './rate-limit';
 
 const originalEnv = { ...process.env };
@@ -18,6 +18,10 @@ const deployedEnvironment = {
 const rpcResult = (allowed: boolean) => ({
   data: [{ allowed, remaining: allowed ? 4 : 0, reset_at: '2026-07-25T00:01:00.000Z' }],
   error: null,
+});
+
+beforeEach(() => {
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
 afterEach(() => {
@@ -67,6 +71,9 @@ describe('durable session rate limiting', () => {
         environment: { ...deployedEnvironment, VIBEVOTE_RATE_LIMIT_KEY_SECRET: 'short' },
       }),
     ).resolves.toBe('unavailable');
+    const diagnostics = vi.mocked(console.error).mock.calls.flat().join(' ');
+    expect(diagnostics).toContain('[vibevote:rate-limit] unavailable:');
+    expect(diagnostics).not.toMatch(/server-secret|203\.0\.113\.10|rate-limit-key-secret/);
   });
 
   it('derives a domain-separated limiter key from the server database credential', async () => {
