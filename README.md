@@ -1,60 +1,64 @@
-# VibeVote (codename)
+# VibeVote
 
-VibeVote is a mobile-first group decision utility: one room, private votes, and one fair result. It is an internal codename, not cleared final branding.
+VibeVote is a mobile-first group decision app: create a private room, invite the group, collect private ballots, and lock one fair result.
 
-## Status
+## Product status
 
-This is a production-ready repository foundation, not the product. It includes a static accessible shell, provisional shared contracts, local Supabase layout, tests, CI, and two-developer working rules. It does not yet create rooms, authenticate people, store votes, calculate results, or use realtime.
+The complete first-session flow is implemented:
+
+- A host creates a room with 2–12 options and chooses Instant Match, Best Fit, or Chaos Pick.
+- Guests join through one expiring, host-controlled invitation.
+- Everyone confirms readiness before voting starts.
+- Ballots remain private, each participant has one veto, and hard constraints stay host-controlled.
+- The server finalizes one immutable result and every participant receives the same safe projection.
+- Authenticated recovery and an app-shell-only PWA keep the experience resilient without caching private room data.
+
+Accounts, discovery, saved history, groups, payments, provider integrations, and native clients remain future product scope.
 
 ## Architecture
 
-- `apps/web`: Next.js App Router application, owned by the Experience Lead.
-- `packages/contracts`: Zod schemas and inferred types, Platform-owned with shared approval.
-- `packages/decision-engine` and `packages/server`: platform interfaces/placeholders.
-- `packages/ui`: reusable presentation primitives.
-- `supabase`: local configuration, future migrations/functions/seeds.
-- `docs`: product authority, operating model, ADRs, and handoff.
+- `apps/web`: Next.js App Router UI and same-origin HTTP routes.
+- `packages/contracts`: strict Zod request, response, and room-state contracts.
+- `packages/server`: server-only Supabase operations and safe projections.
+- `packages/decision-engine`: deterministic decision rules.
+- `supabase`: migrations plus focused authorization and policy fixtures.
+- `tests/e2e`: responsive browser checks and the real two-participant session flow.
+- `docs`: product, security, decision policy, and release handoff.
 
-## Prerequisites
+The production room module path is:
 
-Node 22+, pnpm 10+, and Docker Desktop plus the Supabase CLI for later local database work. The current foundation does not require a remote Supabase project.
+```text
+room page → RoomBootstrap → typed session client → LobbyScreen({ room, isHost })
+```
+
+Production room code does not import mock rooms or mock results.
 
 ## Local setup
 
+Prerequisites: Node 22+, pnpm 10+, Docker Desktop, and the Supabase CLI.
+
 ```bash
-cp .env.example .env.local
 pnpm install
+pnpm exec supabase start
+pnpm exec supabase db reset --local
 pnpm dev
 ```
 
-Use placeholder values locally until a reviewed local Supabase workflow is introduced. Never put service-role, Places, Stripe, monitoring-auth, or other server secrets in `NEXT_PUBLIC_*` variables.
+The server needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Never expose server credentials through a `NEXT_PUBLIC_*` variable. See `docs/SECURITY.md` for production configuration and trusted-origin behavior.
 
-## Commands
+## Verification
 
 ```bash
-pnpm dev
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm test:e2e
 pnpm build
-pnpm verify
+pnpm test:e2e
 ```
 
-`verify` runs format checking, lint, type checking, unit/component tests, production build, and the Playwright mobile smoke test.
+`pnpm verify` runs the complete repository gate. The live session E2E uses the isolated local Supabase stack on ports `55320–55329`; generic CI skips only that database-backed test unless `VIBEVOTE_RUN_LIVE_SESSION_E2E=1`.
 
-## Two-person workflow
+## Workflow
 
-Read `docs/HANDOFF.md` before work. Keep one focused branch/PR per outcome, do not edit another lane without coordination, and merge an approved shared-contract PR before parallel backend/frontend work. Recommended naming: `experience/<task>`, `platform/<task>`, `contract/<task>`, `integration/<task>`, and `docs/<task>`.
-
-The Experience Lead owns the UX/UI, Sites validation, and frontend. The Platform Lead owns contracts, data, security, server behavior, decision engine, environment validation, and CI. See `docs/OWNERSHIP.md` and `docs/SHARED_PLAN.md`.
-
-## Sites workflow
-
-Use Sites for prototype, mobile UX, user testing, visual direction, and landing-page experiments. Translate approved designs into `apps/web` and `packages/ui`; never make Sites the source of truth for security, persistence, voting, payments, or production server behavior. See `docs/SITES_WORKFLOW.md`.
-
-## First milestone
-
-> Two people open VibeVote on separate devices, join the same custom decision room, vote privately, and receive the same server-locked result.
-
-This setup task does not complete that milestone. The next implementation batches should be a shared `contract/session-v1` PR, then `experience/room-shell` and `platform/session-lifecycle`.
+Read `docs/HANDOFF.md` before starting a batch. Use one focused branch and pull request per outcome, preserve shared-contract and ownership boundaries, and keep server secrets out of commits, browser state, logs, and test artifacts.

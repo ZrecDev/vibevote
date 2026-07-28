@@ -69,6 +69,23 @@ describe('durable session rate limiting', () => {
     ).resolves.toBe('unavailable');
   });
 
+  it('derives a domain-separated limiter key from the server database credential', async () => {
+    const rpc = vi.fn().mockResolvedValue(rpcResult(true));
+    const environment = { ...deployedEnvironment };
+    delete (environment as Partial<typeof deployedEnvironment>).VIBEVOTE_RATE_LIMIT_KEY_SECRET;
+    await expect(
+      checkSessionRateLimit(request(), 'create', {
+        client: { rpc } as never,
+        environment,
+      }),
+    ).resolves.toBe('allowed');
+    expect(rpc).toHaveBeenCalledWith(
+      'check_session_rate_limit_v1',
+      expect.objectContaining({ p_key_hash: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    );
+    expect(JSON.stringify(rpc.mock.calls)).not.toContain(environment.SUPABASE_SERVICE_ROLE_KEY);
+  });
+
   it('uses separate preview and production namespaces without storing the raw address', async () => {
     const rpc = vi.fn().mockResolvedValue(rpcResult(true));
     await expect(

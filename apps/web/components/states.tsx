@@ -5,9 +5,15 @@ export function StateMessage({
   tone = 'neutral',
 }: Readonly<{ title: string; children: React.ReactNode; tone?: 'neutral' | 'error' }>) {
   return (
-    <Card>
-      <h2 className={tone === 'error' ? 'text-[var(--danger)]' : ''}>{title}</h2>
-      <p className="mb-0 text-[var(--muted)]">{children}</p>
+    <Card className="state-panel">
+      <div>
+        <div className="state-icon" aria-hidden="true">
+          {tone === 'error' ? '!' : '·'}
+        </div>
+        <p className="eyebrow">VibeVote</p>
+        <h1 className={`state-title ${tone === 'error' ? 'text-[var(--danger)]' : ''}`}>{title}</h1>
+        <p className="muted">{children}</p>
+      </div>
     </Card>
   );
 }

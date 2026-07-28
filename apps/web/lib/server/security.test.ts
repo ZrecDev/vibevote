@@ -29,7 +29,7 @@ describe('trustedOrigin', () => {
     ).toEqual({ error: 'rejected' });
   });
 
-  it('fails closed for malformed or absent production configuration', () => {
+  it('fails closed for malformed or absent non-provider production configuration', () => {
     process.env = { ...process.env, NODE_ENV: 'production' };
     process.env.VIBEVOTE_APP_ORIGIN = 'not a URL';
     expect(trustedOrigin(new Request('https://app.example.test/api'))).toEqual({
@@ -39,6 +39,58 @@ describe('trustedOrigin', () => {
     expect(trustedOrigin(new Request('https://app.example.test/api'))).toEqual({
       error: 'unavailable',
     });
+  });
+
+  it('uses deployment-owned Vercel origins when an explicit origin is absent', () => {
+    process.env = {
+      ...process.env,
+      NODE_ENV: 'production',
+      VERCEL: '1',
+      VERCEL_ENV: 'production',
+      VERCEL_PROJECT_PRODUCTION_URL: 'vibevote.vercel.app',
+      VERCEL_URL: 'vibevote-deployment.vercel.app',
+    };
+    delete process.env.VIBEVOTE_APP_ORIGIN;
+    expect(
+      trustedOrigin(
+        new Request('https://internal.invalid/api', {
+          headers: { origin: 'https://vibevote.vercel.app' },
+        }),
+      ),
+    ).toEqual({ origin: 'https://vibevote.vercel.app' });
+    expect(
+      trustedOrigin(
+        new Request('https://internal.invalid/api', {
+          headers: { origin: 'https://vibevote-deployment.vercel.app' },
+        }),
+      ),
+    ).toEqual({ origin: 'https://vibevote-deployment.vercel.app' });
+    expect(
+      trustedOrigin(
+        new Request('https://internal.invalid/api', {
+          headers: { origin: 'https://attacker.vercel.app.evil.test' },
+        }),
+      ),
+    ).toEqual({ error: 'rejected' });
+  });
+
+  it('keeps preview and production provider origins isolated', () => {
+    process.env = {
+      ...process.env,
+      NODE_ENV: 'production',
+      VERCEL: '1',
+      VERCEL_ENV: 'preview',
+      VERCEL_PROJECT_PRODUCTION_URL: 'vibevote.vercel.app',
+      VERCEL_URL: 'vibevote-preview.vercel.app',
+    };
+    delete process.env.VIBEVOTE_APP_ORIGIN;
+    expect(
+      trustedOrigin(
+        new Request('https://internal.invalid/api', {
+          headers: { origin: 'https://vibevote.vercel.app' },
+        }),
+      ),
+    ).toEqual({ error: 'rejected' });
   });
 });
 
